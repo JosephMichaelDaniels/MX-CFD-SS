@@ -1,0 +1,1760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>MetaConnex · B1 Crompton Place · Performance Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=Bebas+Neue&display=swap');
+:root{
+  --bg:#060A0F;--panel:#0D1520;--panel2:#111C2E;--b:#1A2A40;
+  --a:#00C8FF;--a2:#00FF88;--a3:#FF6B35;--a4:#C850C0;
+  --gold:#C8963C;--teal:#00CCBB;
+  --txt:#E2EBF6;--mut:#5A7A9A;--red:#FF4444;--yel:#FFD700;
+  --t1:#00C8FF;--t2:#00FF88;--t3:#C8963C;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--txt);font-family:'DM Sans',sans-serif;font-size:12px;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
+::-webkit-scrollbar{width:3px;height:3px;}::-webkit-scrollbar-thumb{background:var(--b);}
+
+/* ── TOPBAR ── */
+.topbar{height:44px;background:var(--panel);border-bottom:1px solid var(--b);display:flex;align-items:center;padding:0 14px;gap:12px;flex-shrink:0;}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;color:var(--a);display:flex;align-items:center;gap:7px;}
+.logo-dot{width:6px;height:6px;background:var(--a2);border-radius:50%;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.proj-tag{font-family:'Space Mono',monospace;font-size:10px;color:var(--txt);background:rgba(0,200,255,.1);border:1px solid rgba(0,200,255,.25);padding:3px 10px;letter-spacing:1px;}
+.topbar-right{margin-left:auto;display:flex;gap:7px;align-items:center;}
+.badge{font-size:9px;font-family:'Space Mono',monospace;background:rgba(0,200,255,.08);color:var(--a);border:1px solid rgba(0,200,255,.22);padding:2px 8px;letter-spacing:.5px;}
+.badge.g{background:rgba(0,255,136,.08);color:var(--a2);border-color:rgba(0,255,136,.22);}
+.badge.o{background:rgba(255,107,53,.08);color:var(--a3);border-color:rgba(255,107,53,.22);}
+.badge.gold{background:rgba(200,150,60,.08);color:var(--gold);border-color:rgba(200,150,60,.22);}
+
+/* ── MODULE TABS ── */
+.module-tabs{display:flex;background:var(--panel);border-bottom:1px solid var(--b);flex-shrink:0;}
+.mtab{padding:9px 22px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border-right:1px solid var(--b);color:var(--mut);transition:all .2s;position:relative;}
+.mtab.active{color:var(--txt);background:rgba(0,200,255,.05);}
+.mtab.active::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--a);}
+.mtab.social.active::after{background:var(--a2);}
+.mtab:hover:not(.active){color:var(--txt);}
+
+/* ── MAIN LAYOUT ── */
+.main{display:flex;flex:1;overflow:hidden;}
+
+/* ── LEFT: BUILDING EDITOR ── */
+.editor{width:260px;background:var(--panel);border-right:1px solid var(--b);display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0;}
+.esec{border-bottom:1px solid var(--b);padding:10px 12px;}
+.esh{font-size:9px;font-family:'Space Mono',monospace;color:var(--mut);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:5px;}
+.esh::before{content:'';width:8px;height:1px;background:var(--a);}
+.esh.g::before{background:var(--a2);}
+.esh.o::before{background:var(--a3);}
+.esh.gold::before{background:var(--gold);}
+
+/* inline editable fields */
+.field{display:flex;align-items:center;gap:5px;margin-bottom:5px;position:relative;}
+.flbl{flex:1;color:var(--mut);font-size:11px;}
+.fval{width:85px;background:var(--panel2);border:1px solid var(--b);color:var(--txt);padding:4px 7px;font-family:'Space Mono',monospace;font-size:11px;border-radius:2px;text-align:right;outline:none;transition:border-color .2s;}
+.fval:focus{border-color:var(--a);}
+.fval.live{border-color:var(--a3);color:var(--a3);animation:flash .4s ease;}
+@keyframes flash{0%{background:rgba(255,107,53,.15)}100%{background:transparent}}
+.fval[readonly]{color:var(--mut);background:transparent;border-color:transparent;cursor:default;}
+.funit{font-size:9px;color:var(--mut);width:26px;flex-shrink:0;}
+.derived-badge{font-size:8px;font-family:'Space Mono',monospace;color:var(--teal);background:rgba(0,204,187,.08);border:1px solid rgba(0,204,187,.2);padding:1px 4px;margin-left:auto;flex-shrink:0;}
+
+select.fval{text-align:left;cursor:pointer;}
+option{background:#0D1520;}
+
+.calc-note{font-size:9px;color:var(--mut);font-family:'Space Mono',monospace;line-height:1.5;margin-top:3px;padding:4px 6px;background:rgba(0,0,0,.2);border-radius:2px;}
+
+/* live KPI strip below editor header */
+.kpi-strip{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px;}
+.ks{background:var(--panel2);border:1px solid var(--b);padding:7px 8px;border-radius:2px;}
+.ks-l{font-size:8px;font-family:'Space Mono',monospace;color:var(--mut);letter-spacing:.5px;text-transform:uppercase;margin-bottom:2px;}
+.ks-v{font-family:'Space Mono',monospace;font-size:14px;font-weight:700;line-height:1;}
+.ks-v.a{color:var(--a)}.ks-v.g{color:var(--a2)}.ks-v.o{color:var(--a3)}.ks-v.gold{color:var(--gold)}
+.ks-u{font-size:8px;color:var(--mut);}
+
+.run-btn{width:100%;padding:9px;background:var(--a2);color:var(--bg);border:none;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;cursor:pointer;font-weight:700;margin-top:5px;transition:all .2s;}
+.run-btn:hover{background:transparent;color:var(--a2);border:1px solid var(--a2);}
+
+/* ── VIEWPORT ── */
+.viewport{flex:1;position:relative;overflow:hidden;background:#040810;}
+#threeCanvas{display:block;width:100%;height:100%;}
+.vp-corners .c{position:absolute;width:16px;height:16px;border-color:rgba(0,200,255,.35);border-style:solid;}
+.c.tl{top:12px;left:12px;border-width:1px 0 0 1px}.c.tr{top:12px;right:12px;border-width:1px 1px 0 0}
+.c.bl{bottom:12px;left:12px;border-width:0 0 1px 1px}.c.br{bottom:12px;right:12px;border-width:0 1px 1px 0}
+.mode-label{position:absolute;top:12px;left:12px;font-family:'Space Mono',monospace;font-size:8px;letter-spacing:2px;color:var(--a);background:rgba(6,10,15,.85);border:1px solid rgba(0,200,255,.25);padding:3px 9px;text-transform:uppercase;pointer-events:none;}
+.vp-hud{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;gap:10px;pointer-events:none;}
+.hud{background:rgba(6,10,15,.88);border:1px solid var(--b);padding:4px 10px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--mut);display:flex;gap:6px;}
+.hud span{color:var(--txt);}
+.sim-tabs{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:2px;pointer-events:all;background:rgba(6,10,15,.92);border:1px solid var(--b);padding:3px;}
+.stab{padding:4px 12px;font-size:8px;font-family:'Space Mono',monospace;letter-spacing:1px;color:var(--mut);cursor:pointer;transition:all .2s;border:1px solid transparent;text-transform:uppercase;}
+.stab.active{color:var(--a);border-color:rgba(0,200,255,.3);background:rgba(0,200,255,.08);}
+.cfd-legend{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:rgba(6,10,15,.88);border:1px solid var(--b);padding:8px 7px;flex-direction:column;align-items:center;gap:3px;display:none;}
+.leg-bar{width:11px;height:110px;border:1px solid var(--b);}
+.leg-ticks{display:flex;flex-direction:column;justify-content:space-between;height:110px;}
+.leg-tick{font-size:7px;font-family:'Space Mono',monospace;color:var(--mut);}
+.leg-lbl{font-size:7px;font-family:'Space Mono',monospace;color:var(--mut);letter-spacing:1px;}
+/* SIM OVERLAY */
+.sim-ov{position:absolute;inset:0;background:rgba(4,8,16,.82);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:50;opacity:0;pointer-events:none;transition:opacity .25s;backdrop-filter:blur(2px);}
+.sim-ov.on{opacity:1;pointer-events:all;}
+.spinner{width:38px;height:38px;border:2px solid var(--b);border-top-color:var(--a2);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sim-lbl{font-family:'Space Mono',monospace;font-size:10px;color:var(--a2);letter-spacing:2px;}
+.sim-step-txt{font-size:9px;color:var(--mut);letter-spacing:1px;}
+.prog-wrap{width:200px;}
+.prog-trk{height:2px;background:var(--panel2);border-radius:2px;overflow:hidden;margin-bottom:5px;}
+.prog-f{height:100%;background:linear-gradient(90deg,var(--a2),var(--a));border-radius:2px;transition:width .2s;}
+.prog-lb{display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:8px;color:var(--mut);}
+
+/* ── RIGHT: RESULTS ── */
+.results{width:280px;background:var(--panel);border-left:1px solid var(--b);display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0;}
+.rph{font-size:9px;font-family:'Space Mono',monospace;color:var(--mut);letter-spacing:2px;text-transform:uppercase;padding:10px 11px 6px;border-bottom:1px solid var(--b);flex-shrink:0;}
+
+/* results panels */
+.rpanel{display:none;flex-direction:column;flex:1;}
+.rpanel.active{display:flex;}
+
+.kgrid{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:8px;}
+.kcard{background:var(--panel2);border:1px solid var(--b);padding:8px;border-radius:2px;position:relative;overflow:hidden;}
+.kcard::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;}
+.kcard.b::after{background:var(--a)}.kcard.g::after{background:var(--a2)}.kcard.o::after{background:var(--a3)}.kcard.p::after{background:var(--a4)}.kcard.gold::after{background:var(--gold)}
+.kl{font-size:8px;color:var(--mut);letter-spacing:.5px;text-transform:uppercase;margin-bottom:3px;}
+.kv{font-family:'Space Mono',monospace;font-size:15px;font-weight:700;line-height:1;}
+.kv.b{color:var(--a)}.kv.g{color:var(--a2)}.kv.o{color:var(--a3)}.kv.p{color:var(--a4)}.kv.gold{color:var(--gold)}
+.ku{font-size:8px;color:var(--mut);margin-top:1px;}.kd{font-size:8px;color:var(--a2);margin-top:2px;}.kd.na{color:var(--mut);}
+
+/* value strip */
+.val-strip{margin:0 8px 6px;background:var(--panel2);border:1px solid var(--b);padding:8px 10px;border-radius:2px;}
+.val-strip .kl{margin-bottom:4px;}
+.val-row{display:flex;align-items:baseline;gap:8px;}
+
+/* bar rows */
+.section-hdr{font-size:9px;color:var(--mut);font-family:'Space Mono',monospace;letter-spacing:1px;text-transform:uppercase;padding:8px 11px 5px;}
+.bar-rows{padding:0 11px 8px;}
+.br{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+.brl{width:72px;font-size:9px;color:var(--mut);flex-shrink:0;}
+.brt{flex:1;height:4px;background:var(--panel2);border-radius:1px;overflow:hidden;}
+.brf{height:100%;border-radius:1px;transition:width .8s ease;}
+.brv{width:48px;font-family:'Space Mono',monospace;font-size:9px;text-align:right;color:var(--txt);flex-shrink:0;}
+
+/* monthly chart */
+canvas.chart{width:100%;display:block;}
+.chart-wrap{padding:0 11px 8px;}
+
+/* cfd grid */
+.cfd-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:0 11px 8px;}
+.cc{background:var(--panel2);border:1px solid var(--b);padding:7px;}
+.ccl{font-size:8px;color:var(--mut);letter-spacing:.5px;text-transform:uppercase;margin-bottom:2px;}
+.ccv{font-family:'Space Mono',monospace;font-size:11px;}
+.ccv.a{color:var(--a)}.ccv.o{color:var(--a3)}.ccv.g{color:var(--a2)}
+
+/* validation list */
+.val-list{padding:0 11px;}
+.vi{display:flex;align-items:flex-start;gap:6px;padding:5px 0;border-bottom:1px solid var(--b);}
+.vi:last-child{border-bottom:none;}
+.vic{width:14px;height:14px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;flex-shrink:0;margin-top:1px;}
+.vic.pass{background:rgba(0,255,136,.18);color:var(--a2);}
+.vic.warn{background:rgba(255,215,0,.12);color:var(--yel);}
+.vic.fail{background:rgba(255,68,68,.12);color:var(--red);}
+.vit{flex:1;}.vn{font-size:10px;font-weight:500;margin-bottom:1px;}.vd{font-size:9px;color:var(--mut);}.vs{font-size:8px;font-family:'Space Mono',monospace;color:var(--mut);margin-top:1px;}
+
+/* social metric cards */
+.smgrid{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:8px;}
+.smc{background:var(--panel2);border:1px solid var(--b);padding:8px;border-radius:2px;position:relative;}
+.smc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;}
+.smc.t1::before{background:var(--t1)}.smc.t2::before{background:var(--t2)}.smc.t3::before{background:var(--t3)}
+.sml{font-size:8px;color:var(--mut);letter-spacing:.5px;text-transform:uppercase;margin-bottom:2px;}
+.smv{font-family:'Space Mono',monospace;font-size:14px;font-weight:700;line-height:1;}
+.smv.t1{color:var(--t1)}.smv.t2{color:var(--t2)}.smv.t3{color:var(--t3)}.smv.gold{color:var(--gold)}
+.smu{font-size:8px;color:var(--mut);margin-top:1px;}
+.smst{font-size:7px;font-family:'Space Mono',monospace;margin-top:3px;}
+.smst.pass{color:var(--a2)}.smst.warn{color:var(--yel)}.smst.fail{color:var(--red)}.smst.info{color:var(--a)}
+
+/* export/report area */
+.rep-area{padding:10px;border-top:1px solid var(--b);margin-top:auto;flex-shrink:0;}
+.exp-btn{width:100%;padding:8px;border:1px solid var(--a);color:var(--a);background:rgba(0,200,255,.06);font-family:'Space Mono',monospace;font-size:9px;letter-spacing:1.5px;cursor:pointer;transition:all .2s;text-transform:uppercase;margin-bottom:4px;}
+.exp-btn:hover{background:var(--a);color:var(--bg);}
+.exp-btn:disabled{opacity:.3;cursor:not-allowed;}
+.exp-btn.social{border-color:var(--a2);color:var(--a2);background:rgba(0,255,136,.06);}
+.exp-btn.social:hover{background:var(--a2);color:var(--bg);}
+.exp-std{font-size:8px;color:var(--mut);text-align:center;font-family:'Space Mono',monospace;line-height:1.5;}
+
+/* value dashboard section (social results) */
+.vdash{margin:0 8px 6px;background:var(--panel2);border:1px solid rgba(200,150,60,.25);padding:9px;border-radius:2px;}
+.vdash-title{font-size:9px;font-family:'Space Mono',monospace;color:var(--gold);letter-spacing:1px;text-transform:uppercase;margin-bottom:7px;}
+.vd-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(26,42,64,.5);font-size:10px;}
+.vd-row:last-child{border-bottom:none;}
+.vd-lbl{color:var(--mut);}
+.vd-val{font-family:'Space Mono',monospace;}
+.vd-val.pos{color:var(--a2)}.vd-val.neg{color:var(--red)}.vd-val.n{color:var(--txt)}
+
+/* score wheel area */
+.score-area{padding:8px 11px;display:flex;align-items:center;gap:12px;}
+.score-ring{width:64px;height:64px;flex-shrink:0;}
+.score-detail{flex:1;}
+.score-main{font-family:'Space Mono',monospace;font-size:28px;font-weight:700;line-height:1;color:var(--gold);}
+.score-lbl{font-size:9px;color:var(--mut);font-family:'Space Mono',monospace;letter-spacing:1px;}
+.score-bars{margin-top:5px;}
+.sb-row{display:flex;align-items:center;gap:5px;margin-bottom:3px;}
+.sb-lbl{font-size:8px;color:var(--mut);width:24px;flex-shrink:0;}
+.sb-trk{flex:1;height:3px;background:var(--panel2);border-radius:1px;overflow:hidden;}
+.sb-fil{height:100%;border-radius:1px;}
+.sb-v{font-size:8px;font-family:'Space Mono',monospace;color:var(--txt);width:24px;text-align:right;flex-shrink:0;}
+
+/* overall live update indicator */
+.live-pill{position:absolute;top:8px;right:8px;font-family:'Space Mono',monospace;font-size:7px;letter-spacing:1px;padding:2px 6px;background:rgba(0,255,136,.12);color:var(--a2);border:1px solid rgba(0,255,136,.25);border-radius:10px;opacity:0;transition:opacity .3s;pointer-events:none;}
+.live-pill.show{opacity:1;}
+
+/* ── WWR VISUAL CONTROL ── */
+.wwr-wrap{background:var(--panel2);border:1px solid var(--b);border-radius:2px;padding:9px 10px;margin-bottom:7px;}
+.wwr-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.wwr-label{font-size:9px;font-family:'Space Mono',monospace;color:var(--mut);letter-spacing:1px;text-transform:uppercase;}
+.wwr-val-box{background:var(--bg);border:1px solid var(--a);padding:3px 8px;display:flex;align-items:baseline;gap:2px;}
+.wwr-val-box span:first-child{font-family:'Space Mono',monospace;font-size:16px;font-weight:700;color:var(--a);line-height:1;transition:color .3s;}
+.wwr-pct{font-size:9px;color:var(--mut);}
+
+/* Facade preview strip */
+.wwr-facade{height:54px;border:1px solid var(--b);background:#060E1A;overflow:hidden;border-radius:1px;margin-bottom:8px;position:relative;}
+.wwr-floors{display:flex;flex-direction:column-reverse;height:100%;width:100%;}
+.wwr-floor-row{display:flex;flex:1;border-bottom:1px solid rgba(0,119,170,.45);}
+.wwr-floor-row:last-child{border-bottom:none;}
+.wwr-spandrel{background:#1A2E3E;flex-shrink:0;}
+.wwr-bay{display:flex;flex:1;gap:1px;}
+.wwr-glazing{flex:1;transition:background .35s,opacity .35s;}
+.wwr-pier{background:#1A2E3E;width:4px;flex-shrink:0;}
+.wwr-facade-label{position:absolute;top:2px;right:5px;font-family:'Space Mono',monospace;font-size:7px;color:rgba(0,200,255,.4);letter-spacing:1px;}
+
+/* Slider */
+.wwr-slider-row{display:flex;align-items:center;gap:7px;margin-bottom:8px;}
+.wwr-tick{font-family:'Space Mono',monospace;font-size:8px;color:var(--mut);flex-shrink:0;}
+.wwr-slider{flex:1;-webkit-appearance:none;appearance:none;height:3px;border-radius:2px;outline:none;cursor:pointer;background:var(--b);}
+.wwr-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--a);border:2px solid var(--bg);cursor:pointer;box-shadow:0 0 0 1px var(--a);transition:transform .15s;}
+.wwr-slider::-webkit-slider-thumb:hover{transform:scale(1.25);}
+.wwr-slider::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--a);border:2px solid var(--bg);cursor:pointer;}
+
+/* Presets */
+.wwr-presets{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px;}
+.wwr-pre{background:var(--bg);border:1px solid var(--b);color:var(--mut);font-family:'Space Mono',monospace;font-size:7px;letter-spacing:.5px;padding:4px 2px;cursor:pointer;text-align:center;line-height:1.5;transition:all .2s;text-transform:uppercase;}
+.wwr-pre span{color:rgba(255,255,255,.3);font-size:8px;}
+.wwr-pre:hover,.wwr-pre.active{border-color:var(--a);color:var(--a);background:rgba(0,200,255,.07);}
+.wwr-pre.active span{color:var(--a);}
+
+/* Live thermal readout */
+.wwr-impact{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;}
+.wi-row{background:rgba(0,0,0,.3);border:1px solid var(--b);padding:4px 5px;border-radius:1px;}
+.wi-row span:first-child{font-size:7px;color:var(--mut);font-family:'Space Mono',monospace;display:block;letter-spacing:.5px;text-transform:uppercase;margin-bottom:2px;}
+.wi-val{font-family:'Space Mono',monospace;font-size:9px;color:var(--a);display:block;}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo"><div class="logo-dot"></div>METACONNEX</div>
+  <div class="proj-tag">B1 · CROMPTON PLACE · S2 OPTION F</div>
+  <div class="topbar-right">
+    <div class="badge">BTR / RESIDENTIAL</div>
+    <div class="badge">6 STOREYS · 18.0M</div>
+    <div class="badge gold" id="ntgBadge">NTG 72%</div>
+    <div class="badge g" id="statusBadge">LIVE</div>
+  </div>
+</div>
+
+<!-- MODULE TABS -->
+<div class="module-tabs">
+  <div class="mtab active" id="tabEnergy" onclick="switchModule('energy')">⚡ Energy & CFD</div>
+  <div class="mtab social" id="tabSocial" onclick="switchModule('social')">🌱 Social & Sustainability</div>
+</div>
+
+<div class="main">
+
+<!-- ══════════════ LEFT: BUILDING EDITOR ══════════════ -->
+<div class="editor" id="editor">
+  <div class="esec">
+    <div class="esh">B1 Crompton — Live Building Editor</div>
+    <div class="calc-note">Edit any field → all outputs update instantly. Bold = derived automatically.</div>
+    <div style="height:5px"></div>
+    <div class="kpi-strip" id="kpiStrip">
+      <div class="ks"><div class="ks-l">GIA</div><div class="ks-v a" id="ksGIA">5,973</div><div class="ks-u">m²</div></div>
+      <div class="ks"><div class="ks-l">NIA</div><div class="ks-v g" id="ksNIA">4,557</div><div class="ks-u">m²</div></div>
+      <div class="ks"><div class="ks-l">NTG</div><div class="ks-v gold" id="ksNTG">72%</div><div class="ks-u">efficiency</div></div>
+      <div class="ks"><div class="ks-l">GDV</div><div class="ks-v o" id="ksGDV">£10.71m</div><div class="ks-u">net dev value</div></div>
+    </div>
+  </div>
+
+  <!-- MASSING -->
+  <div class="esec">
+    <div class="esh">Massing Controls</div>
+    <div class="field"><div class="flbl">Storeys (G+n)</div><input class="fval" id="storeys" type="number" value="6" min="1" max="20" step="1" oninput="liveUpdate()"><div class="funit">no.</div></div>
+    <div class="field"><div class="flbl">Ground Flr Height</div><input class="fval" id="gfH" type="number" value="4.2" min="2.5" max="8" step="0.1" oninput="liveUpdate()"><div class="funit">m</div></div>
+    <div class="field"><div class="flbl">Typical Flr Height</div><input class="fval" id="typH" type="number" value="3.05" min="2.4" max="5" step="0.05" oninput="liveUpdate()"><div class="funit">m</div></div>
+    <div class="field"><div class="flbl">Block Length</div><input class="fval" id="length" type="number" value="48" min="10" max="200" step="1" oninput="liveUpdate()"><div class="funit">m</div></div>
+    <div class="field"><div class="flbl">Block Depth</div><input class="fval" id="depth" type="number" value="18" min="8" max="40" step="0.5" oninput="liveUpdate()"><div class="funit">m</div></div>
+    <div class="field"><div class="flbl">Building Height</div><input class="fval" id="bHeight" type="text" readonly><div class="funit">m</div><div class="derived-badge">AUTO</div></div>
+    <div class="field"><div class="flbl">Footprint</div><input class="fval" id="footprint" type="text" readonly><div class="funit">m²</div><div class="derived-badge">AUTO</div></div>
+  </div>
+
+  <!-- AREAS -->
+  <div class="esec">
+    <div class="esh g">Area Schedule</div>
+    <div class="field"><div class="flbl">GFA (Planning)</div><input class="fval" id="gfa" type="number" value="6500" min="100" oninput="liveUpdate()"><div class="funit">m²</div></div>
+    <div class="field"><div class="flbl">GIA (Cost Basis)</div><input class="fval" id="gia" type="number" value="5973" min="100" oninput="liveUpdate()"><div class="funit">m²</div></div>
+    <div class="field"><div class="flbl">Residential NIA</div><input class="fval" id="resNIA" type="number" value="4294" min="0" oninput="liveUpdate()"><div class="funit">m²</div></div>
+    <div class="field"><div class="flbl">Commercial NIA</div><input class="fval" id="comNIA" type="number" value="263" min="0" oninput="liveUpdate()"><div class="funit">m²</div></div>
+    <div class="field"><div class="flbl">Total NIA</div><input class="fval" id="totalNIA" type="text" readonly><div class="funit">m²</div><div class="derived-badge">AUTO</div></div>
+    <div class="field"><div class="flbl">NTG Efficiency</div><input class="fval" id="ntg" type="text" readonly><div class="funit">%</div><div class="derived-badge">AUTO</div></div>
+  </div>
+
+  <!-- UNITS -->
+  <div class="esec">
+    <div class="esh">Residential Units</div>
+    <div class="field"><div class="flbl">Total Units</div><input class="fval" id="totalUnits" type="number" value="60" min="1" oninput="liveUpdate()"><div class="funit">no.</div></div>
+    <div class="field"><div class="flbl">1B2P Units</div><input class="fval" id="u1b" type="number" value="25" min="0" oninput="liveUpdate()"><div class="funit">no.</div></div>
+    <div class="field"><div class="flbl">2B4P Units</div><input class="fval" id="u2b" type="number" value="35" min="0" oninput="liveUpdate()"><div class="funit">no.</div></div>
+    <div class="field"><div class="flbl">Avg Unit Size</div><input class="fval" id="avgUnit" type="text" readonly><div class="funit">m²</div><div class="derived-badge">AUTO</div></div>
+    <div class="field"><div class="flbl">Number of Cores</div><input class="fval" id="cores" type="number" value="2" min="1"><div class="funit">no.</div></div>
+  </div>
+
+  <!-- VALUE -->
+  <div class="esec">
+    <div class="esh gold">Value & Cost (BTR)</div>
+    <div class="field"><div class="flbl">1B2P Rent</div><input class="fval" id="rent1b" type="number" value="13500" oninput="liveUpdate()"><div class="funit">£/yr</div></div>
+    <div class="field"><div class="flbl">2B4P Rent</div><input class="fval" id="rent2b" type="number" value="16500" oninput="liveUpdate()"><div class="funit">£/yr</div></div>
+    <div class="field"><div class="flbl">OPEX</div><input class="fval" id="opex" type="number" value="28" min="0" max="60" oninput="liveUpdate()"><div class="funit">%</div></div>
+    <div class="field"><div class="flbl">Cap Rate</div><input class="fval" id="capRate" type="number" value="5.75" min="3" max="12" step="0.25" oninput="liveUpdate()"><div class="funit">%</div></div>
+    <div class="field"><div class="flbl">Build Cost/m²</div><input class="fval" id="buildCost" type="number" value="2659" oninput="liveUpdate()"><div class="funit">£/m²</div></div>
+    <div class="field"><div class="flbl">Prof Fees</div><input class="fval" id="profFees" type="number" value="10" min="0" max="20" oninput="liveUpdate()"><div class="funit">%</div></div>
+    <div class="field"><div class="flbl">Dev Mgmt Fee</div><input class="fval" id="dmFee" type="number" value="4" min="0" max="10" oninput="liveUpdate()"><div class="funit">%</div></div>
+    <div class="field"><div class="flbl">Contingency</div><input class="fval" id="contingency" type="number" value="6" min="0" max="15" oninput="liveUpdate()"><div class="funit">%</div></div>
+    <div class="field"><div class="flbl">S106 /unit</div><input class="fval" id="s106" type="number" value="4000" oninput="liveUpdate()"><div class="funit">£</div></div>
+    <div class="field"><div class="flbl">Purchaser Costs</div><input class="fval" id="purCosts" type="number" value="6.5" oninput="liveUpdate()"><div class="funit">%</div></div>
+  </div>
+
+  <!-- ENERGY INPUTS -->
+  <div class="esec">
+    <div class="esh">Energy Specification</div>
+
+    <!-- WWR VISUAL CONTROL -->
+    <div class="wwr-wrap">
+      <div class="wwr-header">
+        <div class="wwr-label">Window-to-Wall Ratio</div>
+        <div class="wwr-val-box"><span id="wwrDisplay">30</span><span class="wwr-pct">%</span></div>
+      </div>
+      <!-- Visual facade preview strip -->
+      <div class="wwr-facade" id="wwrFacade">
+        <div class="wwr-floors" id="wwrFloors"></div>
+      </div>
+      <!-- Slider -->
+      <div class="wwr-slider-row">
+        <span class="wwr-tick">20%</span>
+        <input type="range" id="glazPct" class="wwr-slider" min="20" max="100" step="1" value="30" oninput="onWWRChange(this.value)">
+        <span class="wwr-tick">100%</span>
+      </div>
+      <!-- Presets -->
+      <div class="wwr-presets">
+        <button class="wwr-pre" onclick="setWWR(25)">TRAD<br><span>25%</span></button>
+        <button class="wwr-pre" onclick="setWWR(40)">MID<br><span>40%</span></button>
+        <button class="wwr-pre" onclick="setWWR(60)">CONTEM<br><span>60%</span></button>
+        <button class="wwr-pre active" id="wwrPreFull" onclick="setWWR(100)">CURTAIN<br><span>100%</span></button>
+      </div>
+      <!-- Live thermal impact readout -->
+      <div class="wwr-impact" id="wwrImpact">
+        <div class="wi-row"><span>Solar Gain</span><span id="wiSolar" class="wi-val">—</span></div>
+        <div class="wi-row"><span>Heat Loss</span><span id="wiHeat" class="wi-val">—</span></div>
+        <div class="wi-row"><span>Glazing Area</span><span id="wiArea" class="wi-val">—</span></div>
+      </div>
+    </div>
+    <div class="field"><div class="flbl">Wall U-Value</div><input class="fval" id="wallU" type="number" value="0.18" step="0.01" oninput="liveUpdate()"><div class="funit">W/m²K</div></div>
+    <div class="field"><div class="flbl">Glazing U-Value</div><input class="fval" id="glazU" type="number" value="1.1" step="0.1" oninput="liveUpdate()"><div class="funit">W/m²K</div></div>
+    <div class="field"><div class="flbl">Roof U-Value</div><input class="fval" id="roofU" type="number" value="0.13" step="0.01" oninput="liveUpdate()"><div class="funit">W/m²K</div></div>
+    <div class="field"><div class="flbl">Air Permeability</div><input class="fval" id="airPerm" type="number" value="3.0" step="0.5" oninput="liveUpdate()"><div class="funit">m³/h·m²</div></div>
+    <div class="field"><div class="flbl">Heating</div>
+      <select class="fval" id="heating" style="width:115px" onchange="liveUpdate()">
+        <option>ASHP (COP 3.5)</option><option>GSHP (COP 4.2)</option>
+        <option>Gas Boiler (η 92%)</option><option>District Heat</option>
+      </select>
+    </div>
+    <div class="field"><div class="flbl">Ventilation</div>
+      <select class="fval" id="vent" style="width:115px" onchange="liveUpdate()">
+        <option>MVHR 85%</option><option>CAV No Recovery</option><option>Natural Ventilation</option>
+      </select>
+    </div>
+    <div class="field"><div class="flbl">PV Area</div><input class="fval" id="pvArea" type="number" value="150" min="0" oninput="liveUpdate()"><div class="funit">m²</div></div>
+  </div>
+
+  <!-- SOCIAL INPUTS -->
+  <div class="esec">
+    <div class="esh" style="color:var(--a2)">Social Specification</div>
+    <div class="field"><div class="flbl">Green Space</div><input class="fval" id="greenSpace" type="number" value="1200" oninput="liveUpdate()"><div class="funit">m²</div></div>
+    <div class="field"><div class="flbl">EV Points</div><input class="fval" id="evPts" type="number" value="18" oninput="liveUpdate()"><div class="funit">no.</div></div>
+    <div class="field"><div class="flbl">Battery Storage</div><input class="fval" id="battery" type="number" value="0.8" step="0.1" oninput="liveUpdate()"><div class="funit">mWh</div></div>
+    <div class="field"><div class="flbl">Hab Pre-Dev</div>
+      <select class="fval" id="habPre" style="width:115px" onchange="liveUpdate()">
+        <option>Brownfield/Urban</option><option>Grassland Low Dist.</option>
+        <option>Grassland Medium</option><option>Arable</option>
+      </select>
+    </div>
+    <div class="field"><div class="flbl">Hab Post-Dev</div>
+      <select class="fval" id="habPost" style="width:115px" onchange="liveUpdate()">
+        <option>Urban/Landscaped</option><option>Species-rich Grassland</option>
+        <option>Wildflower Meadow</option><option>Woodland</option>
+      </select>
+    </div>
+    <div class="field"><div class="flbl">Flood Invest.</div><input class="fval" id="floodInv" type="number" value="0.3" step="0.1" oninput="liveUpdate()"><div class="funit">£m</div></div>
+    <div class="field"><div class="flbl">Embodied Carbon</div><input class="fval" id="embodied" type="number" value="680" oninput="liveUpdate()"><div class="funit">kgCO₂/m²</div></div>
+  </div>
+
+  <div class="esec">
+    <div style="font-size:9px;color:var(--mut);font-family:'Space Mono',monospace;letter-spacing:1px;margin-bottom:5px;">DECK NAME</div>
+    <input id="deckName" value="B1 Crompton Place — Performance Report" style="width:100%;background:var(--panel2);border:1px solid var(--b);color:var(--txt);padding:5px 8px;font-family:'DM Sans',sans-serif;font-size:11px;outline:none;margin-bottom:5px;">
+    <button class="run-btn" id="runBtn" onclick="runSim()">▶ RUN FULL SIMULATION</button>
+  </div>
+</div>
+
+<!-- ══════════════ VIEWPORT ══════════════ -->
+<div class="viewport">
+  <canvas id="threeCanvas"></canvas>
+  <div class="live-pill" id="livePill">UPDATING</div>
+  <div class="vp-corners"><div class="c tl"></div><div class="c tr"></div><div class="c bl"></div><div class="c br"></div></div>
+  <div class="mode-label" id="modeLabel">MASSING</div>
+  <div class="vp-hud">
+    <div class="hud">GIA <span id="hudGia">5,973m²</span></div>
+    <div class="hud">HT <span id="hudHt">18.0m</span></div>
+    <div class="hud">UNITS <span id="hudUnits">60</span></div>
+    <div class="hud">EUI <span id="hudEui">—</span></div>
+  </div>
+  <div class="sim-tabs">
+    <div class="stab active" onclick="setMode('massing',this)">MASSING</div>
+    <div class="stab" onclick="setMode('thermal',this)">THERMAL</div>
+    <div class="stab" onclick="setMode('cfd',this)">CFD WIND</div>
+    <div class="stab" onclick="setMode('solar',this)">SOLAR</div>
+    <div class="stab" onclick="setMode('daylight',this)">DAYLIGHT</div>
+  </div>
+  <div class="cfd-legend" id="cfdLeg">
+    <div class="leg-lbl">m/s</div>
+    <div style="display:flex;gap:3px;align-items:center">
+      <div class="leg-ticks"><div class="leg-tick">12+</div><div class="leg-tick">6</div><div class="leg-tick">0</div></div>
+      <div class="leg-bar" style="background:linear-gradient(to bottom,#FF2200,#FFD700,#00C8FF,#0044FF)"></div>
+    </div>
+    <div class="leg-lbl">VEL</div>
+  </div>
+  <div class="sim-ov" id="simOv">
+    <div class="spinner"></div>
+    <div class="sim-lbl">COMPUTING B1</div>
+    <div class="sim-step-txt" id="simStepTxt">Initialising...</div>
+    <div class="prog-wrap">
+      <div class="prog-trk"><div class="prog-f" id="pf" style="width:0%"></div></div>
+      <div class="prog-lb"><span id="ppct">0%</span><span id="pphase">INIT</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ RIGHT: RESULTS ══════════════ -->
+<div class="results">
+  <!-- ENERGY PANEL -->
+  <div class="rph" id="resultHeader">Energy Performance · B1 Crompton</div>
+  <div class="rpanel active" id="rpEnergy">
+    <div class="kgrid">
+      <div class="kcard b"><div class="kl">Heat Load</div><div class="kv b" id="kHeat">—</div><div class="ku">kW peak</div><div class="kd na" id="kHeatD">awaiting sim</div></div>
+      <div class="kcard g"><div class="kl">Cool Load</div><div class="kv g" id="kCool">—</div><div class="ku">kW peak</div><div class="kd na" id="kCoolD">awaiting sim</div></div>
+      <div class="kcard o"><div class="kl">Peak HVAC</div><div class="kv o" id="kPeak">—</div><div class="ku">kW cap</div><div class="kd na" id="kPeakD">×1.25 margin</div></div>
+      <div class="kcard p"><div class="kl">EUI</div><div class="kv p" id="kEui">—</div><div class="ku">kWh/m²/yr</div><div class="kd na" id="kEuiD">awaiting sim</div></div>
+    </div>
+    <div class="val-strip">
+      <div class="kl">Annual Energy / Net EUI (w/PV)</div>
+      <div class="val-row"><div class="kv b" id="kAnnual" style="font-size:17px">—</div><div class="ku">MWh/yr</div><div style="margin-left:auto;font-family:'Space Mono',monospace;font-size:10px;color:var(--a2)" id="kEpc">EPC: —</div></div>
+    </div>
+    <div class="section-hdr">Load Breakdown</div>
+    <div class="bar-rows">
+      <div class="br"><div class="brl">Fabric</div><div class="brt"><div class="brf" id="b1" style="width:0%;background:var(--a)"></div></div><div class="brv" id="bv1">—</div></div>
+      <div class="br"><div class="brl">Infiltration</div><div class="brt"><div class="brf" id="b2" style="width:0%;background:#4488FF"></div></div><div class="brv" id="bv2">—</div></div>
+      <div class="br"><div class="brl">Ventilation</div><div class="brt"><div class="brf" id="b3" style="width:0%;background:var(--a4)"></div></div><div class="brv" id="bv3">—</div></div>
+      <div class="br"><div class="brl">Solar Gain</div><div class="brt"><div class="brf" id="b4" style="width:0%;background:var(--yel)"></div></div><div class="brv" id="bv4">—</div></div>
+      <div class="br"><div class="brl">Int. Gains</div><div class="brt"><div class="brf" id="b5" style="width:0%;background:var(--a3)"></div></div><div class="brv" id="bv5">—</div></div>
+    </div>
+    <div class="section-hdr">Monthly Profile</div>
+    <div class="chart-wrap"><canvas class="chart" id="monthlyChart" height="80"></canvas></div>
+    <div class="section-hdr">CFD Wind</div>
+    <div class="cfd-grid">
+      <div class="cc"><div class="ccl">Max Velocity</div><div class="ccv a" id="cMaxV">—</div></div>
+      <div class="cc"><div class="ccl">Drag Force</div><div class="ccv o" id="cDrag">—</div></div>
+      <div class="cc"><div class="ccl">Pressure Cp</div><div class="ccv" id="cCp">—</div></div>
+      <div class="cc"><div class="ccl">Wind ACH</div><div class="ccv g" id="cAch">—</div></div>
+    </div>
+    <div class="section-hdr" style="border-top:1px solid var(--b)">Compliance</div>
+    <div class="val-list" id="valListE"></div>
+    <div class="rep-area">
+      <button class="exp-btn" id="expEBtn" onclick="exportEnergyDeck()" disabled>▶ EXPORT ENERGY DECK</button>
+      <div class="exp-std">EN ISO 13790 · CIBSE TM54 · ASHRAE 90.1 · SAP 10.2</div>
+    </div>
+  </div>
+
+  <!-- SOCIAL PANEL -->
+  <div class="rpanel" id="rpSocial">
+    <!-- Score -->
+    <div class="section-hdr">Overall Impact Score</div>
+    <div class="score-area">
+      <canvas class="score-ring" id="scoreRing" width="64" height="64"></canvas>
+      <div class="score-detail">
+        <div class="score-main" id="scoreMain">—</div>
+        <div class="score-lbl">/100 IMPACT SCORE</div>
+        <div class="score-bars" id="scoreBars"></div>
+      </div>
+    </div>
+    <!-- Value Dashboard -->
+    <div class="section-hdr">BTR Value Dashboard</div>
+    <div class="vdash" id="vdash">
+      <div class="vdash-title">B1 Crompton — Development Appraisal</div>
+      <div class="vd-row"><div class="vd-lbl">Gross Rent p.a.</div><div class="vd-val n" id="vdRent">—</div></div>
+      <div class="vd-row"><div class="vd-lbl">NOI (after OPEX)</div><div class="vd-val n" id="vdNoi">—</div></div>
+      <div class="vd-row"><div class="vd-lbl">GDV</div><div class="vd-val n" id="vdGdv">—</div></div>
+      <div class="vd-row"><div class="vd-lbl">NDV (net of costs)</div><div class="vd-val n" id="vdNdv">—</div></div>
+      <div class="vd-row"><div class="vd-lbl">Total Build Cost</div><div class="vd-val n" id="vdBuild">—</div></div>
+      <div class="vd-row"><div class="vd-lbl">Total Project Cost</div><div class="vd-val n" id="vdTotal">—</div></div>
+      <div class="vd-row" style="border-top:1px solid rgba(200,150,60,.3);margin-top:4px;padding-top:6px"><div class="vd-lbl" style="font-weight:600">Residual / Profit</div><div class="vd-val" id="vdProfit">—</div></div>
+      <div class="vd-row"><div class="vd-lbl">Profit on Cost</div><div class="vd-val" id="vdPoc">—</div></div>
+    </div>
+    <!-- T1 metrics -->
+    <div class="section-hdr" style="color:var(--t1)">Tier 1 · Placemaking</div>
+    <div class="smgrid" id="smT1"></div>
+    <!-- T2 metrics -->
+    <div class="section-hdr" style="color:var(--t2)">Tier 2 · Construction</div>
+    <div class="smgrid" id="smT2"></div>
+    <!-- T3 metrics -->
+    <div class="section-hdr" style="color:var(--t3)">Tier 3 · Legacy</div>
+    <div class="smgrid" id="smT3"></div>
+    <!-- Compliance -->
+    <div class="section-hdr" style="border-top:1px solid var(--b)">Compliance</div>
+    <div class="val-list" id="valListS"></div>
+    <div class="rep-area">
+      <button class="exp-btn social" id="expSBtn" onclick="exportSocialDeck()" disabled>▶ EXPORT SOCIAL DECK</button>
+      <div class="exp-std">Env Act 2021 · CRREM · PCAF · ONS · Defra BM v4.0</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<script>
+// ══════════════════════════════════════════════════
+// THREE.JS SETUP
+// ══════════════════════════════════════════════════
+const canvas = document.getElementById('threeCanvas');
+const renderer = new THREE.WebGLRenderer({canvas,antialias:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.0;
+
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x040810);
+scene.fog=new THREE.FogExp2(0x040810,0.012);
+const camera=new THREE.PerspectiveCamera(45,1,0.1,1000);
+let theta=0.85,phi=0.82,radius=50;
+function posCamera(){camera.position.set(radius*Math.sin(theta)*Math.cos(phi),radius*Math.sin(phi),radius*Math.cos(theta)*Math.cos(phi));camera.lookAt(0,9,0);}
+posCamera();
+
+scene.add(new THREE.AmbientLight(0x1a2a4a,1.0));
+const sun=new THREE.DirectionalLight(0xAADDFF,2.8);
+sun.position.set(35,55,20);sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-60;sun.shadow.camera.right=60;
+sun.shadow.camera.top=60;sun.shadow.camera.bottom=-60;
+scene.add(sun);
+scene.add(new THREE.DirectionalLight(0x334466,0.6).position.set(-20,10,-25)&&sun);
+
+scene.add(new THREE.GridHelper(120,48,0x1a2a40,0x0d1520));
+const gnd=new THREE.Mesh(new THREE.PlaneGeometry(140,140),new THREE.MeshStandardMaterial({color:0x060D1A,roughness:.95}));
+gnd.rotation.x=-Math.PI/2;gnd.receiveShadow=true;scene.add(gnd);
+
+const bGroup=new THREE.Group();scene.add(bGroup);
+let bMesh=null,glazeMeshes=[];
+const thermalGroup=new THREE.Group();thermalGroup.visible=false;scene.add(thermalGroup);
+const pressureGroup=new THREE.Group();pressureGroup.visible=false;scene.add(pressureGroup);
+
+// CFD particles
+const CFD=1600;const cfdPos=new Float32Array(CFD*3);const cfdCol=new Float32Array(CFD*3);const cfdSpd=new Float32Array(CFD);
+const cfdGeo=new THREE.BufferGeometry();
+cfdGeo.setAttribute('position',new THREE.BufferAttribute(cfdPos,3));
+cfdGeo.setAttribute('color',new THREE.BufferAttribute(cfdCol,3));
+const cfdPts=new THREE.Points(cfdGeo,new THREE.PointsMaterial({size:0.17,vertexColors:true,transparent:true,opacity:0.75,sizeAttenuation:true}));
+cfdPts.visible=false;scene.add(cfdPts);
+for(let i=0;i<CFD;i++){cfdPos[i*3]=(Math.random()-.5)*44;cfdPos[i*3+1]=Math.random()*26+.5;cfdPos[i*3+2]=-30+Math.random()*62;cfdSpd[i]=.08+Math.random()*.13;}
+
+// Solar particles
+const SOL=500;const solPos=new Float32Array(SOL*3);const solCol=new Float32Array(SOL*3);
+const solGeo=new THREE.BufferGeometry();
+solGeo.setAttribute('position',new THREE.BufferAttribute(solPos,3));
+solGeo.setAttribute('color',new THREE.BufferAttribute(solCol,3));
+const solPts=new THREE.Points(solGeo,new THREE.PointsMaterial({size:0.2,vertexColors:true,transparent:true,opacity:0.8,sizeAttenuation:true}));
+solPts.visible=false;scene.add(solPts);
+for(let i=0;i<SOL;i++){solPos[i*3]=(Math.random()-.5)*38;solPos[i*3+1]=26+Math.random()*10;solPos[i*3+2]=-26+Math.random()*10;solCol[i*3]=1;solCol[i*3+1]=.85+Math.random()*.15;solCol[i*3+2]=.2;}
+
+// Daylight particles
+const DAY=800;const dayPos=new Float32Array(DAY*3);const dayCol=new Float32Array(DAY*3);
+const dayGeo=new THREE.BufferGeometry();
+dayGeo.setAttribute('position',new THREE.BufferAttribute(dayPos,3));
+dayGeo.setAttribute('color',new THREE.BufferAttribute(dayCol,3));
+const dayPts=new THREE.Points(dayGeo,new THREE.PointsMaterial({size:0.13,vertexColors:true,transparent:true,opacity:0.55,sizeAttenuation:true}));
+dayPts.visible=false;scene.add(dayPts);
+for(let i=0;i<DAY;i++){const a=Math.random()*Math.PI*2,r=12+Math.random()*14;dayPos[i*3]=Math.cos(a)*r;dayPos[i*3+1]=20+Math.random()*8;dayPos[i*3+2]=Math.sin(a)*r;dayCol[i*3]=.5+Math.random()*.5;dayCol[i*3+1]=.8+Math.random()*.2;dayCol[i*3+2]=1;}
+
+let curMode='massing',simDone=false,R=null,curModule='energy';
+
+function velToColor(t){if(t<.25){const f=t/.25;return[0,f,1];}if(t<.5){const f=(t-.25)/.25;return[0,1,1-f];}if(t<.75){const f=(t-.5)/.25;return[f,1,0];}const f=(t-.75)/.25;return[1,1-f*.7,0];}
+
+// ── BUILD BUILDING ────────────────────────────────
+function buildBuilding(){
+  bGroup.clear();thermalGroup.clear();pressureGroup.clear();bMesh=null;glazeMeshes=[];
+  const stor=vn('storeys'),gfH=vn('gfH'),typH=vn('typH');
+  const len=vn('length'),dep=vn('depth'),gp=vn('glazPct')/100;
+  const H=gfH+(stor-1)*typH;
+
+  // Main body — concrete/masonry shell behind facade
+  const bGeo=new THREE.BoxGeometry(len,H,dep);
+  const bMat=new THREE.MeshStandardMaterial({color:0x1A3040,roughness:.55,metalness:.25,transparent:true,opacity:.95});
+  const b=new THREE.Mesh(bGeo,bMat);b.position.y=H/2;b.castShadow=true;b.receiveShadow=true;bGroup.add(b);bMesh=b;
+
+  // ── PER-FLOOR WINDOW BAY SYSTEM ──────────────────
+  // Calculates genuine window-to-wall ratio by creating
+  // spandrel panels (concrete) + glazed strips per floor
+  // on both long faces (B1 double-loaded corridor typology)
+  //
+  // Architecture: 6 bays along 48m length (8m bay width)
+  // Each bay: brick/concrete pier + window opening
+  // WWR controls height of glazed strip within each floor
+
+  const nBays = 6;                   // 6 structural bays along 48m
+  const bayW = len / nBays;          // ~8m bay width
+  const pierW = 0.5;                 // concrete pier width
+  const winW = bayW - pierW;         // window opening width per bay
+  const floorHs = [];                // floor heights array
+  floorHs.push(gfH);                 // GF is taller (4.2m)
+  for(let f=1;f<stor;f++) floorHs.push(typH); // typical 3.05m
+
+  // Material palette
+  const matSpandrel = new THREE.MeshStandardMaterial({color:0x22374A,roughness:.75,metalness:.1});
+  const matPier     = new THREE.MeshStandardMaterial({color:0x1C2E3E,roughness:.8,metalness:.05});
+  const matGlazF    = new THREE.MeshStandardMaterial({color:0x6BBFE0,roughness:.04,metalness:.92,transparent:true,opacity: Math.max(0.28, 0.22 + gp * 0.5)});
+  const matGlazB    = new THREE.MeshStandardMaterial({color:0x4A9ABF,roughness:.06,metalness:.85,transparent:true,opacity: Math.max(0.20, 0.15 + gp * 0.45)});
+  const matFrame    = new THREE.MeshStandardMaterial({color:0x334455,roughness:.4,metalness:.7});
+
+  // Spandrel height = floor height × (1 - WWR), but min 0.3m for sill/lintel
+  // Window height   = floor height × WWR, capped realistically
+  const spandrelRatio = Math.max(0.08, 1 - gp); // never fully disappear
+  const windowRatio   = Math.min(gp, 0.92);       // cap at 92% of floor ht
+
+  let yBase = 0;
+  floorHs.forEach((fh, fi) => {
+    const spH = fh * spandrelRatio;   // spandrel band height
+    const wH  = fh * windowRatio;     // window opening height
+    const winY = yBase + spH/2 + wH/2; // window centre Y
+    const spYbot = yBase + spH/4;       // bottom spandrel Y (sill)
+    const spYtop = yBase + fh - spH/4; // top spandrel Y (lintel)
+
+    // Both long faces: +Z (front) and -Z (back)
+    [dep/2 + 0.04, -(dep/2 + 0.04)].forEach((faceZ, fi2) => {
+      const matG = fi2===0 ? matGlazF : matGlazB;
+      const norm = fi2===0 ? 1 : -1;
+
+      // Full-width spandrel band (bottom sill strip)
+      const sillMesh = new THREE.Mesh(new THREE.BoxGeometry(len, spH*0.5, 0.18), matSpandrel);
+      sillMesh.position.set(0, yBase + spH*0.25, faceZ);
+      bGroup.add(sillMesh);
+
+      // Full-width spandrel band (top lintel strip)
+      const lintMesh = new THREE.Mesh(new THREE.BoxGeometry(len, spH*0.5, 0.18), matSpandrel);
+      lintMesh.position.set(0, yBase + fh - spH*0.25, faceZ);
+      bGroup.add(lintMesh);
+
+      // Per-bay: piers + glazing
+      for(let b2=0; b2<nBays; b2++){
+        const bayX = -len/2 + (b2 + 0.5) * bayW;
+
+        // Vertical pier (skip where cores are — bays 1 and 4)
+        const isCoreZone = (b2===1 || b2===4);
+        const pierMat2 = isCoreZone
+          ? new THREE.MeshStandardMaterial({color:0x142030,roughness:.85})
+          : matPier;
+        const pier = new THREE.Mesh(new THREE.BoxGeometry(pierW, fh, 0.22), pierMat2);
+        pier.position.set(bayX - bayW/2 + pierW/2, yBase + fh/2, faceZ);
+        bGroup.add(pier);
+
+        // Window glazing panel
+        if(!isCoreZone && wH > 0.15){
+          // Window panel
+          const win = new THREE.Mesh(new THREE.BoxGeometry(winW - 0.06, wH - 0.08, 0.06), matG);
+          win.position.set(bayX + pierW/4, winY, faceZ + norm*0.04);
+          bGroup.add(win);
+          glazeMeshes.push(win);
+
+          // Thin aluminium window frame
+          if(gp > 0.15){
+            const frameH = new THREE.Mesh(new THREE.BoxGeometry(winW, 0.06, 0.08), matFrame);
+            frameH.position.set(bayX + pierW/4, winY + wH/2 - 0.03, faceZ);
+            bGroup.add(frameH);
+            const frameH2 = frameH.clone();
+            frameH2.position.y = winY - wH/2 + 0.03;
+            bGroup.add(frameH2);
+            const frameV = new THREE.Mesh(new THREE.BoxGeometry(0.06, wH, 0.08), matFrame);
+            frameV.position.set(bayX + pierW/4 - winW/2 + 0.03, winY, faceZ);
+            bGroup.add(frameV);
+            const frameV2 = frameV.clone();
+            frameV2.position.x = bayX + pierW/4 + winW/2 - 0.03;
+            bGroup.add(frameV2);
+            // Horizontal mullion mid-window (if window tall enough)
+            if(wH > 1.4){
+              const mull = new THREE.Mesh(new THREE.BoxGeometry(winW, 0.05, 0.08), matFrame);
+              mull.position.set(bayX + pierW/4, winY, faceZ);
+              bGroup.add(mull);
+            }
+          }
+        }
+      }
+    });
+
+    yBase += fh;
+  });
+
+  // Floor plates (visible as thin bands)
+  const plateMat=new THREE.MeshStandardMaterial({color:0x0077AA,roughness:.7});
+  // Ground floor plate (4.2m)
+  const gfPlate=new THREE.Mesh(new THREE.BoxGeometry(len+.2,.12,dep+.2),plateMat);
+  gfPlate.position.y=gfH;bGroup.add(gfPlate);
+  // Typical floors
+  for(let f=1;f<stor;f++){
+    const fp=new THREE.Mesh(new THREE.BoxGeometry(len+.2,.1,dep+.2),plateMat);
+    fp.position.y=gfH+f*typH;bGroup.add(fp);
+  }
+
+  // Cores (2 cores, internal, at 1/4 and 3/4 along length)
+  const coreGeo=new THREE.BoxGeometry(6.5,H+.2,6);
+  const coreMat=new THREE.MeshStandardMaterial({color:0x0D2035,roughness:.8});
+  [-len/4,len/4].forEach(cx=>{
+    const core=new THREE.Mesh(coreGeo,coreMat);core.position.set(cx,H/2,0);bGroup.add(core);
+  });
+
+  // Roof parapet
+  const rp=new THREE.Mesh(new THREE.BoxGeometry(len+.3,.35,dep+.3),new THREE.MeshStandardMaterial({color:0x1C2E3E,roughness:.85}));
+  rp.position.y=H+.18;bGroup.add(rp);
+
+  // PV array on roof
+  const pvA=vn('pvArea');
+  if(pvA>0){
+    const pvW=Math.min(Math.sqrt(pvA*1.6),len-4),pvD=Math.min(pvA/pvW,dep-2);
+    const pv=new THREE.Mesh(new THREE.BoxGeometry(pvW,.05,pvD),new THREE.MeshStandardMaterial({color:0x00113A,roughness:.15,metalness:.95}));
+    pv.position.set(0,H+.52,0);pv.rotation.x=-.1;bGroup.add(pv);
+    const pg=new THREE.GridHelper(Math.min(pvW,pvD)*.88,6,0x0033AA,0x001155);pg.position.set(0,H+.55,0);bGroup.add(pg);
+  }
+
+  // Ground floor commercial strip (GF front)
+  const comMat=new THREE.MeshStandardMaterial({color:0x1A3520,roughness:.5,metalness:.3,transparent:true,opacity:.7});
+  const com=new THREE.Mesh(new THREE.BoxGeometry(len,gfH,dep+.05),comMat);
+  com.position.y=gfH/2;bGroup.add(com);
+  // Active frontage glazing (GF)
+  const agMat=new THREE.MeshStandardMaterial({color:0x99FFCC,roughness:.04,metalness:.8,transparent:true,opacity:.45});
+  const ag=new THREE.Mesh(new THREE.BoxGeometry(len*.65,gfH*.7,.06),agMat);
+  ag.position.set(0,gfH*.45,dep/2+.07);bGroup.add(ag);
+
+  // Context buildings
+  [[-55,0,-20,22,8],[-55,0,18,16,12],[55,0,-15,20,10],[55,0,15,18,6],[0,0,-35,40,5],[0,0,35,36,4]].forEach(([x,,z,w,h])=>{
+    const cb=new THREE.Mesh(new THREE.BoxGeometry(w,h,w*.5+2),new THREE.MeshStandardMaterial({color:0x0D1A28,roughness:.85}));
+    cb.position.set(x,h/2,z);cb.castShadow=true;bGroup.add(cb);
+  });
+
+  updateHUD();applyMode(curMode);
+}
+
+// ── VISUAL MODES ─────────────────────────────────
+function applyMode(mode){
+  cfdPts.visible=false;solPts.visible=false;dayPts.visible=false;
+  thermalGroup.visible=false;pressureGroup.visible=false;
+  document.getElementById('cfdLeg').style.display='none';
+  sun.intensity=2.8;
+
+  const labels={massing:'MASSING · B1 CROMPTON',thermal:'THERMAL HEAT LOSS',cfd:'CFD WIND · VELOCITY',solar:'SOLAR GAIN',daylight:'DAYLIGHT SIMULATION'};
+  document.getElementById('modeLabel').textContent=labels[mode]||mode.toUpperCase();
+  if(!bMesh)return;
+  const m=bMesh.material;
+  m.emissive.set(0);
+
+  if(mode==='massing'){m.color.set(0x1a3a5c);m.opacity=.9;}
+  else if(mode==='thermal'){
+    if(!simDone)return;
+    m.color.set(0x0D1A2A);m.opacity=.4;thermalGroup.visible=true;
+  }else if(mode==='cfd'){
+    if(!simDone)return;
+    m.color.set(0x0A1E2E);m.opacity=.55;
+    cfdPts.visible=true;pressureGroup.visible=true;
+    document.getElementById('cfdLeg').style.display='flex';
+  }else if(mode==='solar'){
+    if(!simDone)return;
+    m.color.set(0x1A2A1A);m.opacity=.5;
+    // Tint glazing panels amber — intensity scales with WWR
+    const gp2=vn('glazPct')/100;
+    glazeMeshes.forEach(g=>{
+      if(g.material){
+        g.material.color.set(0xFFAA22);
+        g.material.opacity=Math.min(0.75, 0.3 + gp2*0.45);
+        g.material.emissive=new THREE.Color(0x331100);
+        g.material.emissiveIntensity=0.3*gp2;
+      }
+    });
+    solPts.visible=true;sun.intensity=4.5+gp2*1.5;
+  }else if(mode==='daylight'){
+    if(!simDone)return;
+    m.color.set(0x162232);m.opacity=.6;
+    const gp3=vn('glazPct')/100;
+    glazeMeshes.forEach(g=>{
+      if(g.material){
+        g.material.color.set(0xCCEEFF);
+        g.material.opacity=Math.min(0.75, 0.25 + gp3*0.5);
+        g.material.emissive=new THREE.Color(0x001122);
+        g.material.emissiveIntensity=0.2*gp3;
+      }
+    });
+    dayPts.visible=true;sun.intensity=3.5;
+  }
+}
+
+function buildThermal(){
+  thermalGroup.clear();if(!bMesh||!R)return;
+  const wU=vn('wallU'),len=vn('length'),dep=vn('depth'),H=bMesh.position.y*2;
+  const faces=[{w:len,h:H,px:0,py:H/2,pz:dep/2,ry:0,u:wU},{w:len,h:H,px:0,py:H/2,pz:-dep/2,ry:Math.PI,u:wU},{w:dep,h:H,px:len/2,py:H/2,pz:0,ry:Math.PI/2,u:wU},{w:dep,h:H,px:-len/2,py:H/2,pz:0,ry:-Math.PI/2,u:wU},{w:len,h:dep,px:0,py:H+.15,pz:0,rx:-Math.PI/2,u:vn('roofU')}];
+  faces.forEach(f=>{
+    const g=new THREE.PlaneGeometry(f.w,f.h,6,6);
+    const colors=new Float32Array(g.attributes.position.count*3);
+    for(let vi=0;vi<g.attributes.position.count;vi++){
+      const t=Math.min(f.u/.5,1);const h2=(1-t)*.66;
+      const c=new THREE.Color().setHSL(h2,1,.55);
+      colors[vi*3]=c.r;colors[vi*3+1]=c.g;colors[vi*3+2]=c.b;
+    }
+    g.setAttribute('color',new THREE.BufferAttribute(colors,3));
+    const mesh=new THREE.Mesh(g,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.7,side:THREE.FrontSide,depthWrite:false}));
+    mesh.position.set(f.px,f.py,f.pz);if(f.ry)mesh.rotation.y=f.ry;if(f.rx)mesh.rotation.x=f.rx;
+    thermalGroup.add(mesh);
+  });
+}
+function buildPressure(){
+  pressureGroup.clear();if(!R)return;
+  const len=vn('length'),dep=vn('depth'),H=bMesh?bMesh.position.y*2:18;
+  const pFaces=[{w:dep,h:H,px:len/2,py:H/2,pz:0,ry:Math.PI/2,cp:.8,col:0xFF6600},{w:dep,h:H,px:-len/2,py:H/2,pz:0,ry:-Math.PI/2,cp:-.5,col:0x0044CC},{w:len,h:H,px:0,py:H/2,pz:dep/2,ry:0,cp:-.7,col:0x002288},{w:len,h:H,px:0,py:H/2,pz:-dep/2,ry:Math.PI,cp:-.7,col:0x002288}];
+  pFaces.forEach(f=>{
+    const t=(f.cp+.8)/1.6;const col=new THREE.Color();col.setHSL(t<.4?.66:t*.12,1,.5);
+    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(f.w,f.h),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.42,side:THREE.FrontSide,depthWrite:false}));
+    mesh.position.set(f.px,f.py,f.pz);if(f.ry)mesh.rotation.y=f.ry;pressureGroup.add(mesh);
+  });
+}
+
+// ── ANIMATE ─────────────────────────────────────
+let isDrag=false,pMouse={x:0,y:0};
+canvas.addEventListener('mousedown',e=>{isDrag=true;pMouse={x:e.clientX,y:e.clientY};});
+window.addEventListener('mouseup',()=>isDrag=false);
+window.addEventListener('mousemove',e=>{if(!isDrag)return;theta-=(e.clientX-pMouse.x)*.005;phi=Math.max(.15,Math.min(1.45,phi-(e.clientY-pMouse.y)*.005));pMouse={x:e.clientX,y:e.clientY};posCamera();});
+canvas.addEventListener('wheel',e=>{radius=Math.max(16,Math.min(100,radius+e.deltaY*.04));posCamera();e.preventDefault();},{passive:false});
+function resizeR(){const vp=canvas.parentElement;renderer.setSize(vp.clientWidth,vp.clientHeight);camera.aspect=vp.clientWidth/vp.clientHeight;camera.updateProjectionMatrix();}
+window.addEventListener('resize',resizeR);resizeR();
+
+let lastT=0;
+function anim(t){
+  requestAnimationFrame(anim);const dt=Math.min((t-lastT)/1000,.05);lastT=t;
+  if(cfdPts.visible){
+    const bW=vn('depth')/2+.5,bL=vn('length')/2+.5,bH=bMesh?bMesh.position.y*2:18;
+    for(let i=0;i<CFD;i++){
+      let x=cfdPos[i*3],y=cfdPos[i*3+1],z=cfdPos[i*3+2];const spd=cfdSpd[i];
+      let vx=spd,vy=0,vz=0;
+      if(Math.abs(z)<bW+3&&x>-bL-3&&x<bL+6&&y<bH+2){
+        if(x<-bL){vx=spd*.5;vz=(z>0?.04:-.04)*Math.max(0,bW-Math.abs(z));}
+        else if(x>bL&&x<bL+7){vx=spd*.3;vz+=(Math.random()-.5)*.04;}
+        else if(Math.abs(z)>bW-.5&&Math.abs(z)<bW+2.5){vx*=1.5;}
+        if(y>bH-.5&&y<bH+2.5&&Math.abs(z)<bW&&x>-bL&&x<bL){vx*=1.4;vy+=.015;}
+      }
+      x+=vx;y+=vy;z+=vz;
+      if(x>34||y>32){x=-30;y=Math.random()*26+.5;z=(Math.random()-.5)*vn('depth')*2;cfdSpd[i]=.08+Math.random()*.12;}
+      cfdPos[i*3]=x;cfdPos[i*3+1]=y;cfdPos[i*3+2]=z;
+      const norm=Math.min(cfdSpd[i]/.25,1);const c=velToColor(norm);
+      cfdCol[i*3]=c[0];cfdCol[i*3+1]=c[1];cfdCol[i*3+2]=c[2];
+    }
+    cfdGeo.attributes.position.needsUpdate=true;cfdGeo.attributes.color.needsUpdate=true;
+  }
+  if(solPts.visible){
+    const bH2=bMesh?bMesh.position.y*2:18,bZ=vn('depth')/2;
+    for(let i=0;i<SOL;i++){
+      solPos[i*3]+=.3;solPos[i*3+1]-=.6;solPos[i*3+2]+=.45;
+      if(solPos[i*3+1]<-1||solPos[i*3+2]>26){solPos[i*3]=(Math.random()-.5)*38;solPos[i*3+1]=26+Math.random()*10;solPos[i*3+2]=-26+Math.random()*8;}
+      if(solPos[i*3+2]>bZ-.5&&solPos[i*3+2]<bZ+.5&&solPos[i*3+1]<bH2&&Math.abs(solPos[i*3])<vn('length')/2){solCol[i*3]=1;solCol[i*3+1]=.5;solCol[i*3+2]=0;}
+    }
+    solGeo.attributes.position.needsUpdate=true;solGeo.attributes.color.needsUpdate=true;
+  }
+  if(dayPts.visible){
+    const bH3=bMesh?bMesh.position.y*2:18;
+    for(let i=0;i<DAY;i++){
+      dayPos[i*3+1]-=.05+Math.random()*.04;
+      if(dayPos[i*3+1]<-1){const a=Math.random()*Math.PI*2,r=12+Math.random()*14;dayPos[i*3]=Math.cos(a)*r;dayPos[i*3+1]=20+Math.random()*8;dayPos[i*3+2]=Math.sin(a)*r;dayCol[i*3]=.5+Math.random()*.5;dayCol[i*3+1]=.8+Math.random()*.2;dayCol[i*3+2]=1;}
+      if(Math.abs(dayPos[i*3])<vn('length')/2+1&&Math.abs(dayPos[i*3+2])<vn('depth')/2+1&&dayPos[i*3+1]<bH3+1){dayCol[i*3]=.9;dayCol[i*3+1]=.85;dayCol[i*3+2]=.6;}
+    }
+    dayGeo.attributes.position.needsUpdate=true;dayGeo.attributes.color.needsUpdate=true;
+  }
+  renderer.render(scene,camera);
+}
+requestAnimationFrame(anim);
+
+// ══════════════════════════════════════════════════
+// WWR VISUAL CONTROL
+// ══════════════════════════════════════════════════
+function onWWRChange(val){
+  val = Math.round(val);
+  document.getElementById('wwrDisplay').textContent = val;
+
+  // Colour-code the value: blue→yellow→red as glass increases
+  const t = (val - 20) / 80; // 0 at 20%, 1 at 100%
+  const col = t < 0.4
+    ? `hsl(${200 - t*200},90%,60%)`   // blue→cyan
+    : t < 0.7
+    ? `hsl(${120 - (t-0.4)*400},90%,60%)`  // cyan→yellow
+    : `hsl(${Math.max(0,40-(t-0.7)*133)},90%,60%)`; // yellow→red
+  document.getElementById('wwrDisplay').style.color = col;
+  document.querySelector('.wwr-val-box').style.borderColor = col;
+  document.querySelector('.wwr-slider').style.background =
+    `linear-gradient(to right, ${col} 0%, ${col} ${((val-20)/80)*100}%, var(--b) ${((val-20)/80)*100}%, var(--b) 100%)`;
+
+  // Update preset button active state
+  document.querySelectorAll('.wwr-pre').forEach(btn => btn.classList.remove('active'));
+  if(val===25) document.querySelectorAll('.wwr-pre')[0].classList.add('active');
+  else if(val===40) document.querySelectorAll('.wwr-pre')[1].classList.add('active');
+  else if(val===60) document.querySelectorAll('.wwr-pre')[2].classList.add('active');
+  else if(val===100) document.querySelectorAll('.wwr-pre')[3].classList.add('active');
+
+  renderWWRFacade(val);
+  updateWWRImpact(val);
+  liveUpdate();
+}
+
+function setWWR(val){
+  document.getElementById('glazPct').value = val;
+  onWWRChange(val);
+}
+
+function renderWWRFacade(pct){
+  const container = document.getElementById('wwrFloors');
+  const stor = Math.max(1, vn('storeys'));
+  const nBays = 6;
+  const wRatio = pct / 100;
+  const sRatio = 1 - wRatio;
+
+  // Colour for glazing tiles: more glass = more blue/reflective
+  const glassR = Math.round(80 + (1-wRatio)*60);
+  const glassG = Math.round(160 + wRatio*30);
+  const glassB = Math.round(220);
+  const glassAlpha = 0.35 + wRatio * 0.55;
+  const glassCol = `rgba(${glassR},${glassG},${glassB},${glassAlpha})`;
+  const spandrelCol = `#1C2E3E`;
+  const pierCol = `#162434`;
+  const frameCol = `rgba(80,120,140,0.5)`;
+
+  let html = '';
+  for(let f = 0; f < stor; f++){
+    const isGF = (f === 0);
+    const floorH = isGF ? 1.5 : 1; // GF taller in preview
+    const spH = Math.max(6, Math.round(sRatio * 100 * (isGF ? 0.35 : 0.4)));
+    const wH = 100 - spH;
+
+    html += `<div class="wwr-floor-row" style="flex:${floorH}">`;
+
+    // Spandrel band at base of each floor
+    html += `<div style="position:absolute;left:0;right:0;height:${spH*0.55}%;background:${spandrelCol};bottom:0;"></div>`;
+
+    // Build bays
+    html += `<div style="display:flex;width:100%;height:100%;position:relative;">`;
+    // Top spandrel / lintel
+    html += `<div style="position:absolute;top:0;left:0;right:0;height:${Math.max(4, spH*0.5)}%;background:${spandrelCol};z-index:2;"></div>`;
+    // Bottom sill
+    html += `<div style="position:absolute;bottom:0;left:0;right:0;height:${Math.max(4, spH*0.5)}%;background:${spandrelCol};z-index:2;"></div>`;
+
+    for(let bay = 0; bay < nBays; bay++){
+      const isCoreZone = (bay===1 || bay===4);
+      html += `<div style="flex:1;display:flex;align-items:stretch;position:relative;">`;
+      // Vertical pier
+      html += `<div style="width:3px;background:${pierCol};flex-shrink:0;z-index:3;"></div>`;
+      // Window or solid wall
+      if(isCoreZone || wRatio < 0.05){
+        html += `<div style="flex:1;background:${spandrelCol};"></div>`;
+      } else {
+        // Glazed area (clipped between spandrel bands)
+        html += `<div style="flex:1;background:${glassCol};background-image:linear-gradient(135deg,rgba(255,255,255,0.08) 0%,transparent 50%,rgba(0,0,0,0.04) 100%);border-left:1px solid ${frameCol};border-right:1px solid ${frameCol};"></div>`;
+      }
+      html += `</div>`;
+    }
+    // Last pier
+    html += `<div style="width:3px;background:${pierCol};z-index:3;"></div>`;
+    html += `</div>`; // bay row
+    html += `</div>`; // floor row
+  }
+
+  container.innerHTML = html;
+
+  // Label
+  const label = pct <= 30 ? 'TRADITIONAL'
+    : pct <= 50 ? 'MID-RANGE'
+    : pct <= 75 ? 'CONTEMPORARY'
+    : 'CURTAIN WALL';
+  const facadeEl = document.getElementById('wwrFacade');
+  let lbl = facadeEl.querySelector('.wwr-facade-label');
+  if(!lbl){ lbl = document.createElement('div'); lbl.className='wwr-facade-label'; facadeEl.appendChild(lbl); }
+  lbl.textContent = label + ' · ' + pct + '% WWR';
+}
+
+function updateWWRImpact(pct){
+  const gia = vn('gia') || 5973;
+  const len = vn('length') || 48;
+  const dep = vn('depth') || 18;
+  const stor = vn('storeys') || 6;
+  const gfH = vn('gfH') || 4.2;
+  const typH = vn('typH') || 3.05;
+  const H = gfH + (stor-1)*typH;
+  const wallA = 2*(len+dep)*H;
+  const glazA = wallA * (pct/100);
+  const shgc = 0.35;
+  const solar = (glazA * 0.7 * shgc * 0.9 * 950 * 0.6) / 1000; // MWh/yr
+  const heatLoss = glazA * 1.1; // W/K glazing contribution
+
+  document.getElementById('wiSolar').textContent = solar.toFixed(0) + ' MWh/yr';
+  document.getElementById('wiSolar').style.color = pct > 50 ? '#FFD700' : 'var(--a)';
+  document.getElementById('wiHeat').textContent = heatLoss.toFixed(0) + ' W/K';
+  document.getElementById('wiHeat').style.color = pct > 60 ? '#FF6644' : 'var(--a)';
+  document.getElementById('wiArea').textContent = glazA.toFixed(0) + 'm²';
+}
+
+// ══════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════
+function vn(id){return parseFloat(document.getElementById(id)?.value)||0;}
+function vs(id){const el=document.getElementById(id);return el?el.value:'';}
+function set(id,val){const el=document.getElementById(id);if(el)el.value=val;}
+function flash(id){const el=document.getElementById(id);if(!el)return;el.classList.add('live');setTimeout(()=>el.classList.remove('live'),600);}
+
+// ══════════════════════════════════════════════════
+// LIVE UPDATE (runs on every input change — no sim needed)
+// ══════════════════════════════════════════════════
+let liveTimer=null;
+function liveUpdate(){
+  clearTimeout(liveTimer);
+  // Show live pill
+  const pill=document.getElementById('livePill');pill.classList.add('show');
+  liveTimer=setTimeout(()=>{
+    pill.classList.remove('show');
+    _doLiveUpdate();
+  },80);
+}
+
+function _doLiveUpdate(){
+  // ── Derived geometry ─────────────────────────
+  const stor=vn('storeys'),gfH=vn('gfH'),typH=vn('typH'),len=vn('length'),dep=vn('depth');
+  const H=gfH+(stor-1)*typH;
+  const fp=len*dep;
+  set('bHeight',H.toFixed(1));
+  set('footprint',fp.toFixed(0));
+
+  // ── Derived areas ────────────────────────────
+  const resNIA=vn('resNIA'),comNIA=vn('comNIA'),gia=vn('gia');
+  const totalNIA=resNIA+comNIA;
+  const ntg=gia>0?(totalNIA/gia*100):0;
+  set('totalNIA',totalNIA.toFixed(0));
+  set('ntg',ntg.toFixed(1));
+  document.getElementById('ntgBadge').textContent=`NTG ${ntg.toFixed(0)}%`;
+
+  // ── Derived units ────────────────────────────
+  const u1=vn('u1b'),u2=vn('u2b'),total=vn('totalUnits');
+  const avgUnit=total>0?resNIA/total:0;
+  set('avgUnit',avgUnit.toFixed(0));
+
+  // ── KPI strip ────────────────────────────────
+  const gfa=vn('gfa');
+  document.getElementById('ksGIA').textContent=gia.toLocaleString();
+  document.getElementById('ksNIA').textContent=totalNIA.toLocaleString();
+  document.getElementById('ksNTG').textContent=ntg.toFixed(0)+'%';
+
+  // ── Value calcs (live) ───────────────────────
+  const rent1=vn('rent1b'),rent2=vn('rent2b');
+  const grossRent=u1*rent1+u2*rent2;
+  const opexPct=vn('opex')/100;
+  const noi=grossRent*(1-opexPct);
+  const capR=vn('capRate')/100;
+  const gcv=capR>0?noi/capR:0;
+  const purC=vn('purCosts')/100;
+  const ndv=gcv*(1-purC);
+
+  const buildCost=vn('buildCost'),profF=vn('profFees')/100,dmF=vn('dmFee')/100,cont=vn('contingency')/100;
+  const totalBuild=gia*buildCost;
+  const fees=totalBuild*profF;
+  const dm=totalBuild*dmF;
+  const ctg=totalBuild*cont;
+  const s106=vn('s106')*total;
+  const totalCost=totalBuild+fees+dm+ctg+s106/1e6;
+  const residual=ndv/1e6-totalCost;
+  const poc=totalCost>0?residual/totalCost*100:0;
+
+  document.getElementById('ksGDV').textContent='£'+(ndv/1e6).toFixed(2)+'m';
+
+  // Update 3D building
+  buildBuilding();
+  updateHUD();
+
+  // Update validation if sim done
+  if(simDone&&R){
+    // Recompute R with new inputs and refresh results
+    R=compute();
+    renderEnergyResults(R);
+    renderSocialResults(R);
+    buildThermal();buildPressure();
+  }
+}
+
+function updateHUD(r){
+  const gia=vn('gia'),total=vn('totalUnits'),gfH=vn('gfH'),typH=vn('typH'),stor=vn('storeys');
+  const H=gfH+(stor-1)*typH;
+  document.getElementById('hudGia').textContent=gia.toLocaleString()+'m²';
+  document.getElementById('hudHt').textContent=H.toFixed(1)+'m';
+  document.getElementById('hudUnits').textContent=total;
+  if(r)document.getElementById('hudEui').textContent=r.EUI.toFixed(0)+' kWh/m²';
+}
+
+// ══════════════════════════════════════════════════
+// CALCULATION ENGINE
+// ══════════════════════════════════════════════════
+const CLIMATE={HDD:2400,CDD:180,Tdes_w:-3,Tdes_s:30,solar:950,wind:4.5};
+const COP={'ASHP (COP 3.5)':3.5,'GSHP (COP 4.2)':4.2,'Gas Boiler (η 92%)':0.92,'District Heat':1.1};
+const VE={'MVHR 85%':0.85,'CAV No Recovery':0.0,'Natural Ventilation':0.0};
+const HABPRE={'Brownfield/Urban':.5,'Grassland Low Dist.':1.8,'Grassland Medium':2.8,'Arable':.9};
+const HABPOST={'Urban/Landscaped':2.1,'Species-rich Grassland':3.6,'Wildflower Meadow':4.2,'Woodland':6.0};
+
+function compute(){
+  const gia=vn('gia'),gfa=vn('gfa'),resNIA=vn('resNIA'),comNIA=vn('comNIA');
+  const totalNIA=resNIA+comNIA,ntgVal=gia>0?totalNIA/gia:0;
+  const stor=vn('storeys'),gfH=vn('gfH'),typH=vn('typH'),len=vn('length'),dep=vn('depth');
+  const H=gfH+(stor-1)*typH,gp=vn('glazPct')/100;
+  const wU=vn('wallU'),glazU_=vn('glazU'),roofU_=vn('roofU'),ap=vn('airPerm');
+  const psi=0.04;
+  const shgc=0.35;
+  const total=vn('totalUnits'),u1=vn('u1b'),u2=vn('u2b');
+
+  // Geometry
+  const wallA=2*(len+dep)*H,glazA=wallA*gp,opaqueA=wallA-glazA,roofA=len*dep,floorA=len*dep;
+
+  // Heat loss — EN ISO 13790
+  const htW=opaqueA*wU,htG=glazA*glazU_,htR=roofA*roofU_,htF=floorA*.22,htTB=2*(len+dep)*stor*psi;
+  const htFab=htW+htG+htR+htF+htTB;
+  const vol=gia*((gfH+typH)/2);// weighted avg
+  const hInf=vol*(ap/20)*0.34;
+  const veEff=VE[vs('vent')]??0;
+  const hVent=vol*.8*.34*(1-veEff);// residential ACH 0.8
+  const htTot=htFab+hInf+hVent;
+
+  // Internal gains
+  const nPpl=resNIA/25;// residential 25m²/p
+  const qOcc=nPpl*70;const qLi=gia*5;const qEq=gia*8;const qInt=qOcc+qLi+qEq;
+  const gv=shgc*.9,ff=.7,sh=.6;// mixed orientation residential
+  const qSol=glazA*ff*gv*CLIMATE.solar*sh;
+  const dTh=21-CLIMATE.Tdes_w,dTc=CLIMATE.Tdes_s-24;
+  const qHp=htTot*dTh/1000,qCp=(htTot*dTc+qInt+qSol/8760)/1000;
+  const qHyr=Math.max((htTot*CLIMATE.HDD*24)/1000-qInt*.95*5500/1000-qSol/1000*.4,40);
+  const qCyr=Math.max((htTot*CLIMATE.CDD*24+qInt*.6*1800)/1000+qSol*.2/1000,10);
+
+  const cop=COP[vs('heating')]||3.5;const eer=3.8;
+  const eH=qHyr/cop,eC=qCyr/eer,eLi=gia*5*2000/1000,eEq=gia*8*2200/1000,eVn=vol*.8*.4*3000/1e6;
+  const pvG=vn('pvArea')*CLIMATE.solar*.18/1000;
+  const eTot=eH+eC+eLi+eEq+eVn,eNet=Math.max(0,eTot-pvG);
+  const EUI=eTot/gia,EUInet=eNet/gia;
+  let epc='F';if(EUInet<30)epc='A+';else if(EUInet<50)epc='A';else if(EUInet<75)epc='B';else if(EUInet<100)epc='C';else if(EUInet<135)epc='D';else if(EUInet<175)epc='E';
+
+  // CFD
+  const ws=CLIMATE.wind,dq=.5*1.225*ws**2,cpW=.8,cpL=-.5,mxV=ws*1.8,drg=dq*(cpW-cpL)*wallA/1000,achW=(ap/20)*Math.pow(ws/4,.67);
+
+  // Monthly
+  const mH=[],mC=[];const hF=[1.4,1.3,1.0,.6,.2,.0,.0,.0,.1,.4,.9,1.3],cF=[.0,.0,.0,.1,.4,.9,1.2,1.1,.6,.2,.0,.0];
+  for(let m=0;m<12;m++){mH.push(Math.round(qHyr/12*hF[m]*1.5));mC.push(Math.round(qCyr/12*cF[m]*2.2));}
+
+  // Value calcs
+  const rent1=vn('rent1b'),rent2=vn('rent2b');
+  const grossRent=u1*rent1+u2*rent2;
+  const opexPct=vn('opex')/100,noi=grossRent*(1-opexPct);
+  const capR=vn('capRate')/100,gcv=capR>0?noi/capR:0;
+  const purC=vn('purCosts')/100,ndv=gcv*(1-purC);
+  const buildCostSqm=vn('buildCost'),profF=vn('profFees')/100,dmF=vn('dmFee')/100,cont=vn('contingency')/100;
+  const totalBuild=gia*buildCostSqm,fees=totalBuild*profF,dm=totalBuild*dmF,ctg=totalBuild*cont;
+  const s106=vn('s106')*total;
+  const totalCost=(totalBuild+fees+dm+ctg+s106)/1e6;
+  const residual=ndv/1e6-totalCost;
+  const poc=totalCost>0?residual/totalCost*100:0;
+
+  // Social — T1
+  const greenSp=vn('greenSpace');
+  const residents=Math.round(resNIA/25);
+  const greenPP=residents>0?+(greenSp/residents).toFixed(1):0;
+  const preU=(HABPRE[vs('habPre')]||.5)*(greenSp/10000);
+  const postU=(HABPOST[vs('habPost')]||2.1)*(greenSp/10000);
+  const bngPct=preU>0?+((postU/preU-1)*100).toFixed(1):110;
+  const trees=Math.round(greenSp/25);
+  const affordable=Math.round(total*.2);
+  const renMwh=pvG;
+  // T1/2
+  const constCostM=totalBuild/1e6;
+  const constJobs=Math.round(constCostM*3);
+  const apprent=Math.round(constJobs*.02);
+  const localSpend=+(constCostM*.30).toFixed(2);
+  const trainHrs=constJobs*5;
+  const embodied=vn('embodied');
+  // T3
+  const crremActual=+(EUI*.136).toFixed(2);
+  const crremT2030=12.8;
+  const pcafScore=2;
+  const jobsFTE=Math.round(comNIA/20);
+  const bizRates=+((Math.round(comNIA/100)*50000*.512)/1e6).toFixed(3);
+  const fmSupply=+(comNIA*30/1e6).toFixed(3);
+  const nzbs=EUInet<=30?'Platinum':EUInet<=55?'Gold':EUInet<=80?'Silver':EUInet<=100?'Bronze':'In Progress';
+  // Score
+  const t1Score=Math.min(100,Math.round((total>0?20:0)+(bngPct>=10?25:15)+(greenPP>=9?20:greenPP>=5?12:5)+(vn('evPts')>0?15:0)+(vn('battery')>0?10:0)+(renMwh>0?10:0)));
+  const t2Score=Math.min(100,Math.round((constJobs>0?30:0)+(embodied<500?25:embodied<700?15:5)+(apprent>0?15:0)+(trees>0?15:0)+(vn('floodInv')>0?15:0)));
+  const t3Score=Math.min(100,Math.round((crremActual<=crremT2030?30:crremActual<=20?18:8)+(jobsFTE>0?20:0)+(EUI<100?20:EUI<140?12:5)+(pcafScore<=2?15:10)+(nzbs==='Gold'||nzbs==='Platinum'?15:nzbs==='Silver'?10:5)));
+  const overallScore=Math.round(t1Score*.3+t2Score*.3+t3Score*.4);
+
+  const maxLoad=htFab*dTh/1000+hInf*dTh/1000+hVent*dTh/1000+qSol/8760/1000+qInt/1000;
+
+  return{
+    gia,gfa,resNIA,comNIA,totalNIA,ntgVal,stor,gfH,typH,len,dep,H,gp,
+    wallA,glazA,opaqueA,roofA,wU,glazU_,roofU_,ap,psi,shgc,
+    htW,htG,htR,htF,htTB,htFab,hInf,hVent,htTot,
+    qOcc,qLi,qEq,qInt,qSol,qHp,qCp,qHyr,qCyr,
+    eH,eC,eLi,eEq,eVn,eTot,pvG,eNet,EUI,EUInet,epc,
+    mxV,dq,cpW,cpL,drg,achW,monthly:{h:mH,c:mC},
+    cop,eer,maxLoad,
+    grossRent,noi,gcv,ndv,totalBuild,fees,dm,ctg,s106,totalCost,residual,poc,
+    greenSp,residents,greenPP,bngPct,trees,affordable,renMwh,
+    constCostM,constJobs,apprent,localSpend,trainHrs,embodied,total,u1,u2,
+    crremActual,crremT2030,pcafScore,jobsFTE,bizRates,fmSupply,nzbs,
+    t1Score,t2Score,t3Score,overallScore,
+    opexPct,rent1,rent2,buildCostSqm,
+  };
+}
+
+// ══════════════════════════════════════════════════
+// RENDER RESULTS
+// ══════════════════════════════════════════════════
+function renderEnergyResults(r){
+  document.getElementById('kHeat').textContent=r.qHp.toFixed(0);
+  document.getElementById('kCool').textContent=r.qCp.toFixed(0);
+  document.getElementById('kPeak').textContent=(Math.max(r.qHp,r.qCp)*1.25).toFixed(0);
+  document.getElementById('kEui').textContent=r.EUI.toFixed(1);
+  document.getElementById('kAnnual').textContent=(r.eTot/1000).toFixed(1);
+  document.getElementById('kEpc').textContent='EPC: '+r.epc;
+  document.getElementById('kHeatD').textContent=r.htTot.toFixed(0)+' W/K';document.getElementById('kHeatD').className='kd';
+  document.getElementById('kCoolD').textContent='Solar '+(r.qSol/1e6).toFixed(1)+' MWh/yr';document.getElementById('kCoolD').className='kd';
+  document.getElementById('kEuiD').textContent='Net: '+r.EUInet.toFixed(1)+' kWh/m²';document.getElementById('kEuiD').className='kd';
+  document.getElementById('hudEui').textContent=r.EUI.toFixed(0)+' kWh/m²';
+  const dTh=21-CLIMATE.Tdes_w;
+  const bars=[[r.htFab*dTh/1000,'var(--a)'],[r.hInf*dTh/1000,'#4488FF'],[r.hVent*dTh/1000,'var(--a4)'],[r.qSol/8760/1000,'var(--yel)'],[r.qInt/1000,'var(--a3)']];
+  bars.forEach(([val,col],i)=>{const p=Math.min(100,val/r.maxLoad*100);document.getElementById('b'+(i+1)).style.width=p+'%';document.getElementById('b'+(i+1)).style.background=col;document.getElementById('bv'+(i+1)).textContent=val.toFixed(1)+' kW';});
+  drawMonthly(r.monthly);
+  document.getElementById('cMaxV').textContent=r.mxV.toFixed(1)+' m/s';
+  document.getElementById('cDrag').textContent=r.drg.toFixed(1)+' kN';
+  document.getElementById('cCp').textContent='+'+r.cpW.toFixed(2)+'/'+r.cpL.toFixed(2);
+  document.getElementById('cAch').textContent=r.achW.toFixed(3)+' ACH';
+  renderEnergyVal(r);
+  document.getElementById('expEBtn').disabled=false;
+}
+
+function drawMonthly(m){
+  const c=document.getElementById('monthlyChart');c.width=c.offsetWidth*2;c.height=160;
+  const ctx=c.getContext('2d'),W=c.width,H=c.height,all=[...m.h,...m.c],mx=Math.max(...all)||1,bw=W/12;
+  ctx.clearRect(0,0,W,H);
+  ['J','F','M','A','M','J','J','A','S','O','N','D'].forEach((mn,i)=>{
+    const hh=(m.h[i]/mx)*(H-24),ch=(m.c[i]/mx)*(H-24);
+    ctx.fillStyle='rgba(0,200,255,.7)';ctx.fillRect(i*bw+2,H-hh-16,bw/2-2,hh);
+    ctx.fillStyle='rgba(0,255,136,.7)';ctx.fillRect(i*bw+bw/2,H-ch-16,bw/2-2,ch);
+    ctx.fillStyle='#5A7A9A';ctx.font='12px Space Mono,monospace';ctx.textAlign='center';ctx.fillText(mn,i*bw+bw/2,H-3);
+  });
+}
+
+function renderEnergyVal(r){
+  const wU=vn('wallU'),glazU_=vn('glazU'),ap=vn('airPerm'),roofU_=vn('roofU');
+  const checks=[
+    {n:'Wall U-Value — Part L2A',pass:wU<=0.26,warn:wU<=0.35&&wU>.26,val:wU.toFixed(2)+' W/m²K',req:'≤0.26',std:'Part L2A'},
+    {n:'Glazing U-Value — EN 673',pass:glazU_<=1.6,warn:glazU_<=2.0&&glazU_>1.6,val:glazU_.toFixed(2)+' W/m²K',req:'≤1.60',std:'EN 673'},
+    {n:'Roof U-Value — Part L2A',pass:roofU_<=0.18,warn:roofU_<=0.25&&roofU_>.18,val:roofU_.toFixed(2)+' W/m²K',req:'≤0.18',std:'Part L2A'},
+    {n:'Air Permeability — ATTMA TS1',pass:ap<=5.0,warn:ap<=7.0&&ap>5.0,val:ap.toFixed(1)+' m³/h·m²',req:'≤5.0',std:'ATTMA TS1'},
+    {n:'EUI — CIBSE TM54',pass:r.EUI<=100,warn:r.EUI<=150&&r.EUI>100,val:r.EUI.toFixed(1)+' kWh/m²/yr',req:'≤100',std:'CIBSE TM54'},
+    {n:'CRREM 1.5°C Pathway',pass:r.crremActual<=r.crremT2030,warn:r.crremActual<=20,val:r.crremActual+' kgCO₂/m²/yr',req:'≤12.8',std:'CRREM v2'},
+  ];
+  const l=document.getElementById('valListE');l.innerHTML='';
+  checks.forEach(c=>{const st=c.pass?'pass':(c.warn?'warn':'fail');const ic=c.pass?'✓':(c.warn?'!':'✕');
+    l.innerHTML+=`<div class="vi"><div class="vic ${st}">${ic}</div><div class="vit"><div class="vn">${c.n}</div><div class="vd">${c.val} — Req: ${c.req}</div><div class="vs">${c.std}</div></div></div>`;
+  });
+}
+
+function renderSocialResults(r){
+  // Score ring
+  const ring=document.getElementById('scoreRing');
+  const rc=ring.getContext('2d');rc.clearRect(0,0,64,64);
+  const cx=32,cy=32,rad=28,start=-Math.PI/2;
+  rc.beginPath();rc.arc(cx,cy,rad,0,Math.PI*2);rc.strokeStyle='#1A2A40';rc.lineWidth=7;rc.stroke();
+  rc.beginPath();rc.arc(cx,cy,rad,start,start+Math.PI*2*(r.overallScore/100));
+  rc.strokeStyle=r.overallScore>=70?'#C8963C':r.overallScore>=50?'#00C8FF':'#FF4444';rc.lineWidth=7;rc.lineCap='round';rc.stroke();
+  document.getElementById('scoreMain').textContent=r.overallScore;
+  document.getElementById('scoreBars').innerHTML=[['T1',r.t1Score,'var(--t1)'],['T2',r.t2Score,'var(--t2)'],['T3',r.t3Score,'var(--t3)']].map(([l,v,c])=>`<div class="sb-row"><div class="sb-lbl">${l}</div><div class="sb-trk"><div class="sb-fil" style="width:${v}%;background:${c}"></div></div><div class="sb-v">${v}</div></div>`).join('');
+
+  // Value dashboard
+  const fmt=v=>v>=0?'£'+v.toFixed(2)+'m':'-£'+Math.abs(v).toFixed(2)+'m';
+  const sn=id=>`<span style="color:${r[id]>=0?'var(--a2)':'var(--red)'}">${fmt(r[id])}</span>`;
+  document.getElementById('vdRent').textContent='£'+(r.grossRent/1000).toFixed(0)+'k';
+  document.getElementById('vdNoi').textContent='£'+(r.noi/1000).toFixed(0)+'k';
+  document.getElementById('vdGdv').textContent='£'+(r.gcv/1e6).toFixed(2)+'m';
+  document.getElementById('vdNdv').textContent='£'+(r.ndv/1e6).toFixed(2)+'m';
+  document.getElementById('vdBuild').textContent='£'+r.totalBuild.toFixed(0)+'';
+  document.getElementById('vdBuild').textContent='£'+(r.totalBuild/1e6).toFixed(2)+'m';
+  document.getElementById('vdTotal').textContent='£'+r.totalCost.toFixed(2)+'m';
+  const profEl=document.getElementById('vdProfit');profEl.textContent=fmt(r.residual);profEl.style.color=r.residual>=0?'var(--a2)':'var(--red)';
+  const pocEl=document.getElementById('vdPoc');pocEl.textContent=r.poc.toFixed(1)+'%';pocEl.style.color=r.poc>=15?'var(--a2)':r.poc>=0?'var(--yel)':'var(--red)';
+
+  // T1 metrics
+  const smcard=(tier,label,val,unit,st,stLabel)=>`<div class="smc ${tier}"><div class="sml">${label}</div><div class="smv ${tier}">${val}</div><div class="smu">${unit}</div><div class="smst ${st}">${stLabel}</div></div>`;
+  document.getElementById('smT1').innerHTML=[
+    smcard('t1','New Homes',r.total,'dwellings','info','BTR · Mixed'),
+    smcard('t1','Affordable',r.affordable,'(20% NPPF)',r.affordable>0?'pass':'warn',r.affordable>0?'✓ MET':'! REVIEW'),
+    smcard('t1','Green Space',r.greenSp.toLocaleString(),'m²','info','FROM DESIGN'),
+    smcard('t1','Green/Person',r.greenPP,'m² (9m² std)',r.greenPP>=9?'pass':r.greenPP>=5?'warn':'fail',r.greenPP>=9?'✓ MEETS':'! BELOW'),
+    smcard('t1','Biodiv. Gain',r.bngPct+'%','(≥10% req)',r.bngPct>=10?'pass':'warn',r.bngPct>=10?'✓ MET':'! BELOW'),
+    smcard('t1','EV Points',vn('evPts'),'points','info','OZEV 2024'),
+    smcard('t1','Battery',vn('battery'),'mWh on-site',vn('battery')>0?'info':'warn',vn('battery')>0?'PROVIDED':'NONE'),
+    smcard('t1','Renewables',r.renMwh.toFixed(0),'MWh/yr',r.renMwh>0?'pass':'warn',r.renMwh>0?'✓ FHS 2025':'! REVIEW'),
+  ].join('');
+  document.getElementById('smT2').innerHTML=[
+    smcard('t2','Const. Jobs',r.constJobs.toLocaleString(),'FTE (ONS ×3)','pass','✓ ONS CALC'),
+    smcard('t2','Apprentices',r.apprent,'(2% CITB)','info','CITB LEVY'),
+    smcard('t2','Local Spend','£'+r.localSpend+'m','(30%)','pass','✓ BEIS STD'),
+    smcard('t2','Embodied C',r.embodied,'kgCO₂e/m²',r.embodied<500?'pass':r.embodied<700?'warn':'fail',r.embodied<500?'LOW C':r.embodied<700?'TYPICAL':'HIGH'),
+    smcard('t2','Trees',r.trees.toLocaleString(),'(BS 8545)','pass','✓ CALCULATED'),
+    smcard('t2','Flood Invest','£'+vn('floodInv')+'m','SuDS invest.',vn('floodInv')>0?'info':'warn',vn('floodInv')>0?'PROVIDED':'NONE'),
+    smcard('t2','Training Hrs',r.trainHrs.toLocaleString(),'hours','info','5HRS/WORKER'),
+    smcard('t2','Refurb Homes',Math.round(r.total*.05),'(5% PPG)','info','PPG GUIDE'),
+  ].join('');
+  document.getElementById('smT3').innerHTML=[
+    smcard('t3','CRREM Intens.',r.crremActual,'kgCO₂/m²/yr',r.crremActual<=r.crremT2030?'pass':'warn',r.crremActual<=r.crremT2030?'✓ ON PATH':'⚠ STRAND'),
+    smcard('t3','PCAF Score',r.pcafScore,'/ 5 (1=best)',r.pcafScore<=2?'pass':'warn','SCORE '+r.pcafScore),
+    smcard('t3','UKNZBS',r.nzbs,'rating',r.nzbs!=='In Progress'?'pass':'warn',r.nzbs),
+    smcard('t3','Perm. FTE',r.jobsFTE,'commercial','info','HCA EDA'),
+    smcard('t3','Biz Rates','£'+r.bizRates+'m','p.a.','info','VOA 51.2p'),
+    smcard('t3','FM Supply','£'+r.fmSupply+'m','p.a.','info','RICS £30/m²'),
+    smcard('t3','Energy Delta',Math.round(185-r.EUI),'kWh/m²/yr',185-r.EUI>50?'pass':'warn',185-r.EUI>50?'SIGNIFICANT':'MARGINAL'),
+    smcard('t3','Net EUI',r.EUInet.toFixed(1),'kWh/m²/yr (PV)',r.epc==='A'||r.epc==='A+'||r.epc==='B'?'pass':'warn','EPC '+r.epc),
+  ].join('');
+
+  // Social compliance
+  const checks=[
+    {n:'BNG ≥10% — Env Act 2021',pass:r.bngPct>=10,warn:r.bngPct>=0&&r.bngPct<10,val:r.bngPct+'%',req:'≥10%',std:'Env Act 2021 Sch.14'},
+    {n:'Green Space — NPPF/NHS',pass:r.greenPP>=9,warn:r.greenPP>=5&&r.greenPP<9,val:r.greenPP+'m²/p',req:'≥9m²',std:'NPPF/NHS England'},
+    {n:'CRREM 2030 — 1.5°C',pass:r.crremActual<=r.crremT2030,warn:r.crremActual<=20,val:r.crremActual+' kgCO₂',req:'≤12.8',std:'CRREM v2'},
+    {n:'Embodied Carbon — BECD',pass:r.embodied<500,warn:r.embodied<700,val:r.embodied+' kgCO₂/m²',req:'<500 low-C',std:'UKGBC BECD'},
+    {n:'Affordable — NPPF §63',pass:r.affordable>=Math.round(r.total*.2),warn:r.affordable>0,val:r.affordable+' units',req:'≥20%',std:'NPPF §63'},
+  ];
+  const ls=document.getElementById('valListS');ls.innerHTML='';
+  checks.forEach(c=>{const st=c.pass?'pass':(c.warn?'warn':'fail');const ic=c.pass?'✓':(c.warn?'!':'✕');
+    ls.innerHTML+=`<div class="vi"><div class="vic ${st}">${ic}</div><div class="vit"><div class="vn">${c.n}</div><div class="vd">${c.val} — Req: ${c.req}</div><div class="vs">${c.std}</div></div></div>`;
+  });
+  document.getElementById('expSBtn').disabled=false;
+}
+
+// ══════════════════════════════════════════════════
+// RUN SIMULATION
+// ══════════════════════════════════════════════════
+function runSim(){
+  buildBuilding();buildThermal();buildPressure();
+  const ov=document.getElementById('simOv');ov.classList.add('on');
+  document.getElementById('statusBadge').textContent='RUNNING';document.getElementById('statusBadge').className='badge o';
+  document.getElementById('runBtn').disabled=true;
+  const steps=['Parsing B1 building geometry...','Computing fabric heat loss (EN ISO 13790)...','Calculating solar gains...','Running CFD wind pressure (ASCE 7-22)...','HVAC peak load calculations...','Annual 8760-hr simulation...','Computing social & value metrics...','Building visual overlays...'];
+  const phases=['GEOM','FABRIC','SOLAR','CFD','HVAC','ENERGY','SOCIAL','VISUAL'];
+  let st=0;
+  const iv=setInterval(()=>{
+    if(st>=steps.length){clearInterval(iv);
+      R=compute();simDone=true;
+      buildThermal();buildPressure();
+      renderEnergyResults(R);renderSocialResults(R);
+      ov.classList.remove('on');
+      document.getElementById('statusBadge').textContent='LIVE';document.getElementById('statusBadge').className='badge g';
+      document.getElementById('runBtn').disabled=false;
+      applyMode(curMode);return;}
+    const pct=Math.round(st/steps.length*100);
+    document.getElementById('pf').style.width=pct+'%';
+    document.getElementById('ppct').textContent=pct+'%';
+    document.getElementById('simStepTxt').textContent=steps[st];
+    document.getElementById('pphase').textContent=phases[st]||'';
+    st++;
+  },380);
+}
+
+// ══════════════════════════════════════════════════
+// MODULE SWITCH
+// ══════════════════════════════════════════════════
+function switchModule(mod){
+  curModule=mod;
+  document.getElementById('tabEnergy').classList.toggle('active',mod==='energy');
+  document.getElementById('tabSocial').classList.toggle('active',mod==='social');
+  document.getElementById('rpEnergy').classList.toggle('active',mod==='energy');
+  document.getElementById('rpSocial').classList.toggle('active',mod==='social');
+  document.getElementById('resultHeader').textContent=mod==='energy'?'Energy Performance · B1 Crompton':'Social & Sustainability · B1 Crompton';
+}
+
+function setMode(m,t){document.querySelectorAll('.stab').forEach(x=>x.classList.remove('active'));t.classList.add('active');curMode=m;applyMode(m);}
+
+// ══════════════════════════════════════════════════
+// EXPORT DECKS
+// ══════════════════════════════════════════════════
+async function captureMode(mode){
+  applyMode(mode);
+  await new Promise(r=>setTimeout(r,180));
+  renderer.render(scene,camera);
+  return renderer.domElement.toDataURL('image/jpeg',.85);
+}
+
+async function exportEnergyDeck(){
+  if(!R)return;
+  const r=R,title=document.getElementById('deckName').value,date=new Date().toLocaleDateString('en-GB',{year:'numeric',month:'long',day:'numeric'}),ref='MCX-B1-'+Date.now().toString(36).toUpperCase();
+  document.getElementById('expEBtn').textContent='⏳ CAPTURING...';document.getElementById('expEBtn').disabled=true;
+  const shots={};shots.massing=await captureMode('massing');shots.cfd=await captureMode('cfd');shots.solar=await captureMode('solar');shots.thermal=await captureMode('thermal');shots.daylight=await captureMode('daylight');
+  document.getElementById('expEBtn').textContent='▶ EXPORT ENERGY DECK';document.getElementById('expEBtn').disabled=false;applyMode(curMode);
+  const win=window.open('','_blank');win.document.write(buildEnergyDeckHTML(r,shots,title,date,ref));win.document.close();
+}
+
+async function exportSocialDeck(){
+  if(!R)return;
+  const r=R,title=document.getElementById('deckName').value,date=new Date().toLocaleDateString('en-GB',{year:'numeric',month:'long',day:'numeric'}),ref='MCX-B1-SI-'+Date.now().toString(36).toUpperCase();
+  document.getElementById('expSBtn').textContent='⏳ GENERATING...';document.getElementById('expSBtn').disabled=true;
+  await new Promise(res=>setTimeout(res,100));
+  document.getElementById('expSBtn').textContent='▶ EXPORT SOCIAL DECK';document.getElementById('expSBtn').disabled=false;
+  const win=window.open('','_blank');win.document.write(buildSocialDeckHTML(r,title,date,ref));win.document.close();
+}
+
+// ── ENERGY DECK HTML ─────────────────────────────
+function buildEnergyDeckHTML(r,s,title,date,ref){
+const css=`@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=Bebas+Neue&display=swap');
+:root{--ink:#060A0F;--s:#0D1520;--s2:#111C2E;--b:#1A2A40;--a:#00C8FF;--a2:#00FF88;--a3:#FF6B35;--gold:#C8963C;--txt:#E2EBF6;--mut:#5A7A9A;--yel:#FFD700;--red:#FF4444;}
+*{margin:0;padding:0;box-sizing:border-box;}html{scroll-behavior:smooth;}body{background:var(--ink);color:var(--txt);font-family:'DM Sans',sans-serif;}
+.nav{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:999;display:flex;gap:4px;align-items:center;background:rgba(6,10,15,.92);border:1px solid var(--b);padding:6px 12px;backdrop-filter:blur(8px);}
+.nd{width:7px;height:7px;border-radius:50%;background:var(--b);cursor:pointer;transition:all .25s;}.nd.on{background:var(--a);transform:scale(1.3);}
+.na{background:transparent;border:1px solid var(--b);color:var(--mut);width:24px;height:24px;cursor:pointer;font-size:12px;transition:all .2s;display:flex;align-items:center;justify-content:center;}.na:hover{border-color:var(--a);color:var(--a);}
+.nc{font-family:'Space Mono',monospace;font-size:9px;color:var(--mut);padding:0 8px;}
+.slide{min-height:100vh;width:100%;position:relative;overflow:hidden;}
+.fp{padding:64px 72px;}.fps{padding:64px 72px;background:var(--s);}
+.cover{background:var(--ink);display:flex;flex-direction:column;justify-content:flex-end;padding:64px 72px;}
+.cgrid{position:absolute;inset:0;background-image:linear-gradient(rgba(0,200,255,.03)1px,transparent 1px),linear-gradient(90deg,rgba(0,200,255,.03)1px,transparent 1px);background-size:55px 55px;pointer-events:none;}
+.ctag{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--a);text-transform:uppercase;margin-bottom:16px;}
+.ch1{font-family:'Cormorant Garamond',serif;font-size:clamp(40px,6vw,76px);font-weight:300;line-height:1.0;letter-spacing:-1px;margin-bottom:12px;}
+.ch1 em{font-style:italic;color:rgba(226,235,246,.4);}
+.csub{font-size:14px;color:rgba(226,235,246,.5);max-width:500px;line-height:1.8;margin-bottom:32px;font-weight:300;}
+.cbdgs{display:flex;gap:6px;flex-wrap:wrap;}.cb{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:1.5px;padding:3px 9px;border:1px solid rgba(226,235,246,.15);color:rgba(226,235,246,.45);}
+.csts{position:absolute;top:64px;right:72px;display:flex;flex-direction:column;gap:16px;}.cst{text-align:right;}.csn{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:300;line-height:1;color:var(--a);}
+.csl{font-size:8px;color:rgba(226,235,246,.3);letter-spacing:1px;text-transform:uppercase;font-family:'Space Mono',monospace;}
+.cref{position:absolute;top:64px;left:72px;font-family:'Space Mono',monospace;font-size:8px;color:rgba(226,235,246,.18);letter-spacing:1.5px;line-height:2;}
+.twocol{display:grid;grid-template-columns:1fr 1fr;min-height:100vh;}
+.simimg{position:relative;overflow:hidden;}.simimg img{width:100%;height:100%;object-fit:cover;}
+.c{position:absolute;width:16px;height:16px;border-color:rgba(0,200,255,.35);border-style:solid;}
+.tl{top:12px;left:12px;border-width:1px 0 0 1px}.tr{top:12px;right:12px;border-width:1px 1px 0 0}.bl{bottom:12px;left:12px;border-width:0 0 1px 1px}.br{bottom:12px;right:12px;border-width:0 1px 1px 0}
+.simlbl{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);font-family:'Space Mono',monospace;font-size:8px;letter-spacing:2px;background:rgba(6,10,15,.88);border:1px solid rgba(0,200,255,.25);padding:3px 10px;white-space:nowrap;color:var(--a);}
+.stag{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--a);text-transform:uppercase;margin-bottom:10px;}
+.rule{width:32px;height:1px;background:var(--a);margin-bottom:16px;}
+.sh2{font-family:'Cormorant Garamond',serif;font-size:clamp(26px,3.5vw,42px);font-weight:300;line-height:1.1;letter-spacing:-.5px;margin-bottom:8px;}
+.slead{font-size:13px;color:var(--mut);line-height:1.8;font-weight:300;margin-bottom:22px;max-width:600px;}
+.mbdg{display:inline-flex;align-items:center;gap:6px;font-family:'Space Mono',monospace;font-size:8px;letter-spacing:2px;border:1px solid rgba(0,200,255,.3);padding:3px 9px;margin-bottom:16px;text-transform:uppercase;color:var(--a);}
+.mdot{width:5px;height:5px;border-radius:50%;background:var(--a);animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.2}}
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px;}
+.sg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:14px;}
+.sc{background:var(--s2);border:1px solid var(--b);padding:10px;}.scl{font-size:8px;font-family:'Space Mono',monospace;color:var(--mut);letter-spacing:.5px;text-transform:uppercase;margin-bottom:2px;}
+.scv{font-family:'Space Mono',monospace;font-size:17px;font-weight:700;line-height:1;}.scu{font-size:8px;color:var(--mut);margin-top:1px;}
+.scv.b{color:var(--a)}.scv.g{color:var(--a2)}.scv.o{color:var(--a3)}.scv.gold{color:var(--gold)}.scv.y{color:var(--yel)}
+.brrow{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.brlbl{width:80px;font-size:11px;color:var(--mut);flex-shrink:0;}.brtrk{flex:1;height:5px;background:var(--s2);border-radius:1px;overflow:hidden;}
+.brfil{height:100%;border-radius:1px;}.brval{width:55px;font-family:'Space Mono',monospace;font-size:10px;color:var(--txt);text-align:right;flex-shrink:0;}
+.note{background:rgba(0,200,255,.04);border-left:2px solid rgba(0,200,255,.3);padding:8px 12px;font-size:11px;color:var(--mut);line-height:1.8;margin-top:12px;}
+.formula{background:var(--s2);border:1px solid var(--b);padding:10px 14px;font-family:'Space Mono',monospace;font-size:10px;color:var(--a2);line-height:1.9;margin-top:10px;}
+.ctbl{width:100%;border-collapse:collapse;font-size:11px;margin-top:20px;}
+.ctbl th{background:var(--s2);text-align:left;padding:7px 11px;font-family:'Space Mono',monospace;font-size:8px;letter-spacing:1px;color:var(--mut);border-bottom:1px solid var(--b);text-transform:uppercase;}
+.ctbl td{padding:8px 11px;border-bottom:1px solid rgba(26,42,64,.4);}
+.st-pass{font-family:'Space Mono',monospace;font-size:8px;padding:2px 6px;background:rgba(0,255,136,.1);color:var(--a2);border:1px solid rgba(0,255,136,.2);}
+.st-warn{font-family:'Space Mono',monospace;font-size:8px;padding:2px 6px;background:rgba(255,215,0,.1);color:var(--yel);border:1px solid rgba(255,215,0,.2);}
+.st-fail{font-family:'Space Mono',monospace;font-size:8px;padding:2px 6px;background:rgba(255,68,68,.1);color:var(--red);border:1px solid rgba(255,68,68,.2);}
+.prnbtn{padding:11px 28px;background:var(--a);color:var(--ink);border:none;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;cursor:pointer;font-weight:700;margin-top:20px;}
+.ai{opacity:0;transform:translateY(16px);transition:opacity .6s,transform .6s;}.ai.v{opacity:1;transform:none;}
+.ail{opacity:0;transform:translateX(-16px);transition:opacity .6s,transform .6s;}.ail.v{opacity:1;transform:none;}
+.air{opacity:0;transform:translateX(16px);transition:opacity .6s,transform .6s;}.air.v{opacity:1;transform:none;}
+.d1{transition-delay:.1s}.d2{transition-delay:.2s}.d3{transition-delay:.3s}.d4{transition-delay:.4s}.d5{transition-delay:.5s}.d6{transition-delay:.6s}
+.ecgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--b);margin-top:28px;}
+.ecard{background:var(--s2);padding:20px 16px;position:relative;overflow:hidden;}
+.ecard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.ecard.b::before{background:var(--a)}.ecard.o::before{background:var(--a3)}.ecard.g::before{background:var(--a2)}.ecard.gold::before{background:var(--gold)}.ecard.p::before{background:#C850C0}
+.el{font-size:8px;font-family:'Space Mono',monospace;color:var(--mut);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;}
+.ev{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;line-height:1;}.eu{font-size:9px;color:var(--mut);margin-bottom:6px;}.edesc{font-size:10px;color:var(--mut);line-height:1.5;}
+.epcs{display:flex;flex-direction:column;gap:0;max-width:460px;}
+.epcrow{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(26,42,64,.4);}
+.epcrow.cur{background:rgba(0,200,255,.06);border-radius:2px;padding:6px 8px;margin:0 -8px;border:1px solid rgba(0,200,255,.2);}
+.epcltr{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;width:24px;flex-shrink:0;}
+.epctrk{flex:1;height:5px;background:var(--s2);border-radius:1px;overflow:hidden;}
+.epcfil{height:100%;border-radius:1px;}.epcrng{font-family:'Space Mono',monospace;font-size:8px;color:var(--mut);width:72px;flex-shrink:0;}
+.vboard{background:rgba(200,150,60,.06);border:1px solid rgba(200,150,60,.2);padding:16px;margin-top:16px;}
+.vbd-title{font-size:9px;font-family:'Space Mono',monospace;color:var(--gold);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;}
+.vbd-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(26,42,64,.4);font-size:11px;}
+.vbd-row:last-child{border-bottom:none;}
+@media print{.nav{display:none!important;}.slide{page-break-after:always;}}`;
+const checkRow=(name,std,val,req,pass,warn)=>`<tr><td style="font-weight:500">${name}</td><td style="font-family:'Space Mono',monospace;font-size:9px;color:var(--mut)">${std}</td><td style="font-family:'Space Mono',monospace">${val}</td><td style="font-family:'Space Mono',monospace;color:var(--mut)">${req}</td><td><div class="st-${pass?'pass':warn?'warn':'fail'}">${pass?'✓ PASS':warn?'! REVIEW':'✕ FAIL'}</div></td></tr>`;
+const epcData=[{l:'A+',rng:'<30',h:'#00FF88',w:12,cur:r.epc==='A+'},{l:'A',rng:'30-50',h:'#44DD77',w:22,cur:r.epc==='A'},{l:'B',rng:'50-75',h:'#88CC44',w:34,cur:r.epc==='B'},{l:'C',rng:'75-100',h:'#CCBB22',w:48,cur:r.epc==='C'},{l:'D',rng:'100-135',h:'#FFAA00',w:62,cur:r.epc==='D'},{l:'E',rng:'135-175',h:'#FF7744',w:76,cur:r.epc==='E'},{l:'F+',rng:'>175',h:'#FF4444',w:92,cur:r.epc==='F'}];
+const wU=vn('wallU'),glazU_=vn('glazU'),ap=vn('airPerm'),roofU_=vn('roofU');
+return`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>${title} · Energy Deck</title><style>${css}</style></head><body>
+<div class="nav" id="nav"><button class="na" onclick="prev()">←</button><div id="dots" style="display:flex;gap:4px;"></div><div class="nc" id="ctr">1 / 7</div><button class="na" onclick="next()">→</button></div>
+<div class="slide cover" id="s1"><div class="cgrid"></div>
+<div style="position:absolute;inset:0;background-image:url('${s.massing}');background-size:cover;background-position:center;opacity:.18;"></div>
+<div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(6,10,15,1) 28%,rgba(6,10,15,.25))"></div>
+<div class="cref">${ref}<br>MetaConnex™ · B1 Crompton Place · S2 Option F<br>${date}</div>
+<div class="csts"><div class="cst"><div class="csn">${r.gia.toLocaleString()}</div><div class="csl">GIA m²</div></div><div class="cst"><div class="csn">${r.EUI.toFixed(1)}</div><div class="csl">EUI kWh/m²/yr</div></div><div class="cst"><div class="csn" style="color:${r.epc==='A'||r.epc==='A+'||r.epc==='B'?'#00FF88':'#FFD700'}">EPC ${r.epc}</div><div class="csl">Energy Rating</div></div><div class="cst"><div class="csn" style="color:var(--gold)">${r.total}</div><div class="csl">Residential Units</div></div></div>
+<div class="ctag ai">MetaConnex™ · Energy & CFD Performance Report</div>
+<h1 class="ch1 ai d1">${title.split(' ').slice(0,3).join(' ')}<br><em>${title.split(' ').slice(3).join(' ')||'Energy Analysis'}</em></h1>
+<div class="csub ai d2">BTR/Residential · ${r.stor} storeys · ${r.len}m × ${r.dep}m · ${r.gia.toLocaleString()}m² GIA · ${r.total} units (${r.u1} × 1B2P + ${r.u2} × 2B4P)<br>EN ISO 13790 · CIBSE TM54 · ASHRAE 90.1 · UK Part L2A · SAP 10.2 · ASCE 7-22</div>
+<div class="cbdgs ai d3"><div class="cb">EN ISO 13790</div><div class="cb">CIBSE TM54</div><div class="cb">ASHRAE 90.1</div><div class="cb">UK PART L2A</div><div class="cb">SAP 10.2</div><div class="cb">ASCE 7-22</div></div></div>
+
+<div class="slide twocol" id="s2">
+<div class="fps" style="display:flex;flex-direction:column;justify-content:center;">
+<div class="mbdg ai"><div class="mdot"></div>01 · MASSING & GEOMETRY</div><div class="rule ai d1"></div>
+<h2 class="sh2 ai d2">${title}<br><em>Block B1 · Crompton Place.</em></h2>
+<p class="slead ai d3">BTR residential perimeter slab. Ground floor commercial frontage (${r.comNIA}m² NIA). ${r.stor} storeys, ${r.len}m × ${r.dep}m form. Two circulation cores. Double-loaded corridor. NTG efficiency: ${(r.ntgVal*100).toFixed(0)}%.</p>
+<div class="sg ai d4">
+<div class="sc"><div class="scl">GIA (Cost Basis)</div><div class="scv b">${r.gia.toLocaleString()}</div><div class="scu">m²</div></div>
+<div class="sc"><div class="scl">Residential NIA</div><div class="scv g">${r.resNIA.toLocaleString()}</div><div class="scu">m²</div></div>
+<div class="sc"><div class="scl">Building Height</div><div class="scv b">${r.H.toFixed(1)}</div><div class="scu">m</div></div>
+<div class="sc"><div class="scl">NTG Efficiency</div><div class="scv gold">${(r.ntgVal*100).toFixed(0)}</div><div class="scu">%</div></div>
+</div>
+<div class="sg3 ai d5">
+<div class="sc"><div class="scl">Total Units</div><div class="scv" style="font-size:13px">${r.total}</div></div>
+<div class="sc"><div class="scl">1B2P</div><div class="scv" style="font-size:13px">${r.u1}</div></div>
+<div class="sc"><div class="scl">2B4P</div><div class="scv" style="font-size:13px">${r.u2}</div></div>
+</div>
+<div class="note ai d6">Wall U: <strong>${wU} W/m²K</strong> · Glazing U: <strong>${glazU_} W/m²K</strong> · Roof U: <strong>${roofU_} W/m²K</strong> · Air permeability: <strong>${ap} m³/h·m² @50Pa</strong> · Heating: <strong>${vs('heating')}</strong></div>
+</div>
+<div class="simimg air"><div class="c tl"></div><div class="c tr"></div><div class="c bl"></div><div class="c br"></div><img src="${s.massing}"><div class="simlbl">MASSING · B1 CROMPTON PLACE</div></div></div>
+
+<div class="slide twocol" style="grid-template-columns:1.1fr 1fr" id="s3">
+<div class="simimg ail"><div class="c tl"></div><div class="c tr"></div><div class="c bl"></div><div class="c br"></div><img src="${s.cfd}"><div class="simlbl" style="color:#FF9900;border-color:rgba(255,153,0,.3)">CFD WIND · VELOCITY FIELD · ASCE 7-22</div></div>
+<div class="fps" style="display:flex;flex-direction:column;justify-content:center;">
+<div class="mbdg ai" style="border-color:rgba(255,153,0,.3);color:#FF9900;"><div class="mdot" style="background:#FF9900"></div>02 · CFD WIND ANALYSIS</div><div class="rule ai d1" style="background:#FF9900"></div>
+<h2 class="sh2 ai d2">Wind Velocity<br><em>& Pressure Field.</em></h2>
+<p class="slead ai d3">ASCE 7-22 pressure coefficients. Reference wind ${CLIMATE.wind} m/s. Particle CFD shows stagnation (windward), venturi acceleration and wake turbulence zones along the ${r.len}m building length.</p>
+<div class="sg ai d4">
+<div class="sc"><div class="scl">Max Corner Vel.</div><div class="scv b">${r.mxV.toFixed(1)}</div><div class="scu">m/s</div></div>
+<div class="sc"><div class="scv">${r.dq.toFixed(1)}</div><div class="scu">Pa dynamic pressure</div></div>
+<div class="sc"><div class="scl">Drag Force</div><div class="scv o">${r.drg.toFixed(1)}</div><div class="scu">kN total</div></div>
+<div class="sc"><div class="scl">Wind ACH</div><div class="scv g">${r.achW.toFixed(3)}</div><div class="scu">infiltration</div></div>
+</div>
+<div class="note ai d5">Cp windward +${r.cpW} · leeward ${r.cpL} · sides −0.7 (ASCE 7-22 Fig 27.3-1). Full RANS CFD recommended at RIBA Stage 3.</div></div></div>
+
+<div class="slide twocol" id="s4">
+<div class="fps" style="display:flex;flex-direction:column;justify-content:center;">
+<div class="mbdg ai" style="border-color:rgba(255,215,0,.3);color:#FFD700;"><div class="mdot" style="background:#FFD700"></div>03 · SOLAR + THERMAL</div><div class="rule ai d1" style="background:#FFD700"></div>
+<h2 class="sh2 ai d2">Solar Gain &<br><em>Heat Loss.</em></h2>
+<p class="slead ai d3">Solar gain per EN ISO 13790 Eq.43. Thermal heatmap shows heat flux by face — blue (insulated) to red (high loss). Mixed orientation residential (Fsh=0.60).</p>
+<div class="sg ai d4">
+<div class="sc"><div class="scl">Annual Solar Gain</div><div class="scv y">${(r.qSol/1e6).toFixed(2)}</div><div class="scu">MWh/yr</div></div>
+<div class="sc"><div class="scl">HT Fabric</div><div class="scv">${r.htFab.toFixed(0)}</div><div class="scu">W/K</div></div>
+<div class="sc"><div class="scl">HT Total</div><div class="scv b">${r.htTot.toFixed(0)}</div><div class="scu">W/K</div></div>
+<div class="sc"><div class="scl">Peak Heat</div><div class="scv o">${r.qHp.toFixed(0)}</div><div class="scu">kW</div></div>
+</div>
+<div class="formula ai d5">HT,total = ${r.htFab.toFixed(0)} + ${r.hInf.toFixed(0)} + ${r.hVent.toFixed(0)} = ${r.htTot.toFixed(0)} W/K<br>Q,heat = ${r.htTot.toFixed(0)} × ${21-CLIMATE.Tdes_w} = ${r.qHp.toFixed(0)} kW</div>
+</div>
+<div class="simimg air" style="display:grid;grid-template-rows:1fr 1fr;">
+<div style="position:relative;overflow:hidden"><img src="${s.solar}" style="width:100%;height:100%;object-fit:cover"><div class="simlbl" style="color:#FFD700;border-color:rgba(255,215,0,.3)">SOLAR GAIN · EN ISO 13790</div></div>
+<div style="position:relative;overflow:hidden"><img src="${s.thermal}" style="width:100%;height:100%;object-fit:cover"><div class="simlbl" style="color:#FF6644;border-color:rgba(255,100,60,.3)">THERMAL HEAT LOSS · U-VALUE MAP</div></div>
+</div></div>
+
+<div class="slide fp" id="s5">
+<div class="stag ai">04 · Annual Energy Performance · CIBSE TM54 · 8,760-hr Simulation</div><div class="rule ai d1"></div>
+<h2 class="sh2 ai d2">Energy Use & <em>EPC ${r.epc} Rating.</em></h2>
+<p class="slead ai d3">B1 Crompton Place — ${r.total} unit BTR scheme. ${r.gia.toLocaleString()}m² GIA. Annual simulation all end-uses. PV offset: ${r.pvG.toFixed(0)} MWh/yr. ${vs('heating')} heating system.</p>
+<div class="ecgrid ai d4">
+${[{ico:'⚡',l:'Total Energy',v:(r.eTot/1000).toFixed(1),u:'MWh/yr',c:'b',col:'var(--a)',desc:'EUI '+r.EUI.toFixed(1)+' kWh/m²/yr'},{ico:'♨',l:'Heating',v:(r.eH/1000).toFixed(1),u:'MWh/yr',c:'o',col:'var(--a3)',desc:vs('heating')},{ico:'❄',l:'Cooling',v:(r.eC/1000).toFixed(1),u:'MWh/yr',c:'b',col:'#4488FF',desc:'VRF EER '+r.eer},{ico:'💡',l:'Lighting',v:(r.eLi/1000).toFixed(1),u:'MWh/yr',c:'gold',col:'var(--gold)',desc:'5 W/m²'},{ico:'⊞',l:'Equipment',v:(r.eEq/1000).toFixed(1),u:'MWh/yr',c:'p',col:'#C850C0',desc:'8 W/m²'},{ico:'☀',l:'PV Offset',v:'-'+r.pvG.toFixed(0),u:'MWh',c:'g',col:'var(--a2)',desc:vn('pvArea')+'m² @18%η'}].map(c=>`<div class="ecard ${c.c}"><div style="font-size:18px;margin-bottom:10px;opacity:.7">${c.ico}</div><div class="el">${c.l}</div><div class="ev" style="color:${c.col}">${c.v}</div><div class="eu">${c.u}</div><div class="edesc">${c.desc}</div></div>`).join('')}
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:36px;">
+<div class="ai d5"><div class="stag" style="margin-bottom:12px;font-size:9px">EPC RATING · NET EUI ${r.EUInet.toFixed(1)} kWh/m²/yr</div>
+<div class="epcs">${epcData.map(e=>`<div class="epcrow${e.cur?' cur':''}"><div class="epcltr" style="color:${e.h}">${e.l}</div><div class="epctrk"><div class="epcfil" style="width:${e.w}%;background:${e.h}"></div></div><div class="epcrng">${e.rng} kWh/m²</div>${e.cur?`<div style="font-family:'Space Mono',monospace;font-size:8px;color:${e.h};padding-left:6px">◀ ${r.EUInet.toFixed(0)}</div>`:''}</div>`).join('')}</div>
+</div>
+<div class="ai d6"><div class="stag" style="margin-bottom:12px;font-size:9px">BTR VALUE DASHBOARD</div>
+<div class="vboard">
+<div class="vbd-title">B1 Crompton — Development Appraisal</div>
+${[['Gross Rent p.a.','£'+(r.grossRent/1000).toFixed(0)+'k'],['NOI (after OPEX)','£'+(r.noi/1000).toFixed(0)+'k'],['GDV','£'+(r.gcv/1e6).toFixed(2)+'m'],['NDV (net)','£'+(r.ndv/1e6).toFixed(2)+'m'],['Total Build Cost','£'+(r.totalBuild/1e6).toFixed(2)+'m'],['Total Project Cost','£'+r.totalCost.toFixed(2)+'m'],['Residual',`<span style="color:${r.residual>=0?'var(--a2)':'var(--red)'}">£${r.residual.toFixed(2)}m</span>`],['Profit on Cost',`<span style="color:${r.poc>=0?'var(--yel)':'var(--red)'}">${ r.poc.toFixed(1)}%</span>`]].map(([l,v])=>`<div class="vbd-row"><span style="color:var(--mut)">${l}</span><span>${v}</span></div>`).join('')}
+</div></div></div></div>
+
+<div class="slide fps" id="s6">
+<div class="stag ai">05 · Compliance Matrix · 6 Standards</div><div class="rule ai d1"></div>
+<h2 class="sh2 ai d2">Standards Compliance<br><em>& Validation.</em></h2>
+<p class="slead ai d3">All results traceable to published regulations. B1 Crompton Place — ${date}.</p>
+<table class="ctbl ai d4"><thead><tr><th>Requirement</th><th>Standard & Clause</th><th>Achieved</th><th>Required</th><th>Status</th></tr></thead><tbody>
+${checkRow('Wall U-Value','UK Part L2A (2021) Table 1',wU+' W/m²K','≤0.26',wU<=0.26,wU<=0.35)}
+${checkRow('Glazing U-Value','EN 673:2011 / CIBSE Guide A',glazU_+' W/m²K','≤1.60',glazU_<=1.6,glazU_<=2.0)}
+${checkRow('Roof U-Value','UK Part L2A (2021) Table 1',roofU_+' W/m²K','≤0.18',roofU_<=0.18,roofU_<=0.25)}
+${checkRow('Air Permeability','ATTMA TS1:2010 §5',ap+' m³/h·m²','≤5.0',ap<=5.0,ap<=7.0)}
+${checkRow('EUI — CIBSE TM54','CIBSE TM54 §4.3 Good Practice',r.EUI.toFixed(1)+' kWh/m²/yr','≤100',r.EUI<=100,r.EUI<=150)}
+${checkRow('CRREM 1.5°C (2030)','CRREM v2 UK Residential',r.crremActual+' kgCO₂/m²/yr','≤12.8',r.crremActual<=12.8,r.crremActual<=20)}
+</tbody></table>
+<div style="margin-top:28px;text-align:center">
+<div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--mut);letter-spacing:1px;margin-bottom:14px">${ref} · ${date} · MetaConnex™ B1 Crompton Place · S2 Option F</div>
+<button class="prnbtn" onclick="window.print()">⬇ PRINT / SAVE PDF</button>
+</div></div>
+
+<script>
+const T=6;let c=1;
+const de=document.getElementById('dots');
+for(let i=1;i<=T;i++){const d=document.createElement('div');d.className='nd'+(i===1?' on':'');d.onclick=()=>go(i);de.appendChild(d);}
+function go(n){c=n;document.getElementById('s'+n)?.scrollIntoView({behavior:'smooth',block:'start'});document.querySelectorAll('.nd').forEach((d,i)=>d.classList.toggle('on',i===n-1));document.getElementById('ctr').textContent=n+' / '+T;setTimeout(()=>document.getElementById('s'+n)?.querySelectorAll('.ai,.ail,.air').forEach(e=>e.classList.add('v')),120);}
+function next(){if(c<T)go(c+1);}function prev(){if(c>1)go(c-1);}
+window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowDown')next();if(e.key==='ArrowLeft'||e.key==='ArrowUp')prev();});
+window.addEventListener('scroll',()=>{for(let i=1;i<=T;i++){const s=document.getElementById('s'+i);if(!s)continue;const r=s.getBoundingClientRect();if(r.top<=window.innerHeight/2&&r.bottom>=window.innerHeight/2){if(c!==i){c=i;document.querySelectorAll('.nd').forEach((d,j)=>d.classList.toggle('on',j===i-1));document.getElementById('ctr').textContent=i+' / '+T;}s.querySelectorAll('.ai,.ail,.air').forEach(e=>e.classList.add('v'));}}},{passive:true});
+setTimeout(()=>document.getElementById('s1')?.querySelectorAll('.ai,.ail,.air').forEach(e=>e.classList.add('v')),200);
+<\/script></body></html>`;}
+
+// ── SOCIAL DECK HTML ──────────────────────────────
+function buildSocialDeckHTML(r,title,date,ref){
+const fmt=v=>v>=0?'£'+v.toFixed(2)+'m':'-£'+Math.abs(v).toFixed(2)+'m';
+return`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>${title} · Social Deck</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=Bebas+Neue&display=swap');
+:root{--ink:#060A0F;--s:#0D1520;--s2:#111C2E;--b:#1A2A40;--a:#00C8FF;--a2:#00FF88;--a3:#FF6B35;--gold:#C8963C;--teal:#00CCBB;--txt:#E2EBF6;--mut:#5A7A9A;--yel:#FFD700;--red:#FF4444;--t1:#00C8FF;--t2:#00FF88;--t3:#C8963C;}
+*{margin:0;padding:0;box-sizing:border-box;}html{scroll-behavior:smooth;}body{background:var(--ink);color:var(--txt);font-family:'DM Sans',sans-serif;}
+.nav{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:999;display:flex;gap:4px;align-items:center;background:rgba(6,10,15,.92);border:1px solid var(--b);padding:6px 12px;backdrop-filter:blur(8px);}
+.nd{width:7px;height:7px;border-radius:50%;background:var(--b);cursor:pointer;transition:all .25s;}.nd.on{background:var(--a2);transform:scale(1.3);}
+.na{background:transparent;border:1px solid var(--b);color:var(--mut);width:24px;height:24px;cursor:pointer;font-size:12px;transition:all .2s;display:flex;align-items:center;justify-content:center;}.na:hover{border-color:var(--a2);color:var(--a2);}
+.nc{font-family:'Space Mono',monospace;font-size:9px;color:var(--mut);padding:0 8px;}
+.slide{min-height:100vh;width:100%;position:relative;overflow:hidden;}
+.fp{padding:64px 72px;}.fps{padding:64px 72px;background:var(--s);}
+.cover{background:var(--ink);display:flex;flex-direction:column;justify-content:flex-end;padding:64px 72px;}
+.cgrid{position:absolute;inset:0;background-image:linear-gradient(rgba(0,255,136,.03)1px,transparent 1px),linear-gradient(90deg,rgba(0,255,136,.03)1px,transparent 1px);background-size:55px 55px;pointer-events:none;}
+.ctag{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--a2);text-transform:uppercase;margin-bottom:16px;}
+.ch1{font-family:'Cormorant Garamond',serif;font-size:clamp(40px,6vw,76px);font-weight:300;line-height:1.0;letter-spacing:-1px;margin-bottom:12px;}.ch1 em{font-style:italic;color:rgba(226,235,246,.4);}
+.csub{font-size:14px;color:rgba(226,235,246,.5);max-width:500px;line-height:1.8;margin-bottom:32px;font-weight:300;}
+.cbdgs{display:flex;gap:6px;flex-wrap:wrap;}.cb{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:1.5px;padding:3px 9px;border:1px solid rgba(226,235,246,.15);color:rgba(226,235,246,.45);}
+.csts{position:absolute;top:64px;right:72px;display:flex;flex-direction:column;gap:16px;}.cst{text-align:right;}.csn{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:300;line-height:1;color:var(--a2);}.csl{font-size:8px;color:rgba(226,235,246,.3);letter-spacing:1px;text-transform:uppercase;font-family:'Space Mono',monospace;}
+.stag{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--a2);text-transform:uppercase;margin-bottom:10px;}
+.stag.t1{color:var(--t1)}.stag.t2{color:var(--t2)}.stag.t3{color:var(--t3)}.stag.gold{color:var(--gold)}
+.rule{width:32px;height:1px;background:var(--a2);margin-bottom:16px;}
+.sh2{font-family:'Cormorant Garamond',serif;font-size:clamp(26px,3.5vw,44px);font-weight:300;line-height:1.1;letter-spacing:-.5px;margin-bottom:8px;}
+.slead{font-size:13px;color:var(--mut);line-height:1.8;font-weight:300;margin-bottom:20px;max-width:700px;}
+.mg4{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--b);margin-top:20px;}
+.mc{background:var(--s2);padding:20px 16px;position:relative;overflow:hidden;}.mc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.mc.t1::before{background:var(--t1)}.mc.t2::before{background:var(--t2)}.mc.t3::before{background:var(--t3)}.mc.gold::before{background:var(--gold)}
+.mcl{font-size:8px;font-family:'Space Mono',monospace;color:var(--mut);letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px;}
+.mcv{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;line-height:1;margin-bottom:2px;}
+.mcv.t1{color:var(--t1)}.mcv.t2{color:var(--t2)}.mcv.t3{color:var(--t3)}.mcv.gold{color:var(--gold)}
+.mcu{font-size:9px;color:var(--mut);margin-bottom:5px;}.mcd{font-size:10px;color:var(--mut);line-height:1.5;}.mcapi{font-size:8px;color:var(--teal);margin-top:4px;}
+.st-pass{font-family:'Space Mono',monospace;font-size:7px;padding:1px 5px;background:rgba(0,255,136,.1);color:var(--a2);border:1px solid rgba(0,255,136,.2);}
+.st-warn{font-family:'Space Mono',monospace;font-size:7px;padding:1px 5px;background:rgba(255,215,0,.1);color:var(--yel);border:1px solid rgba(255,215,0,.2);}
+.st-fail{font-family:'Space Mono',monospace;font-size:7px;padding:1px 5px;background:rgba(255,68,68,.1);color:var(--red);border:1px solid rgba(255,68,68,.2);}
+.vdash{background:rgba(200,150,60,.06);border:1px solid rgba(200,150,60,.2);padding:18px;margin-top:20px;}
+.vdt{font-size:9px;font-family:'Space Mono',monospace;color:var(--gold);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;}
+.vdr{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(26,42,64,.4);font-size:12px;}
+.brrow{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+.brlbl{width:130px;font-size:11px;color:var(--mut);flex-shrink:0;}.brtrk{flex:1;height:5px;background:var(--s2);border-radius:1px;overflow:hidden;}
+.brfil{height:100%;border-radius:1px;}.brval{width:65px;font-family:'Space Mono',monospace;font-size:10px;color:var(--txt);text-align:right;flex-shrink:0;}
+.ctbl{width:100%;border-collapse:collapse;font-size:11px;margin-top:20px;}
+.ctbl th{background:var(--s2);text-align:left;padding:7px 11px;font-family:'Space Mono',monospace;font-size:8px;letter-spacing:1px;color:var(--mut);border-bottom:1px solid var(--b);text-transform:uppercase;}
+.ctbl td{padding:8px 11px;border-bottom:1px solid rgba(26,42,64,.4);}
+.note{background:rgba(0,255,136,.04);border-left:2px solid rgba(0,255,136,.3);padding:8px 12px;font-size:11px;color:var(--mut);line-height:1.8;margin-top:12px;}
+.prnbtn{padding:11px 28px;background:var(--a2);color:var(--ink);border:none;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;cursor:pointer;font-weight:700;margin-top:20px;}
+.ai{opacity:0;transform:translateY(16px);transition:opacity .6s,transform .6s;}.ai.v{opacity:1;transform:none;}
+@media print{.nav{display:none!important;}.slide{page-break-after:always;}}
+</style></head><body>
+<div class="nav" id="nav"><button class="na" onclick="prev()">←</button><div id="dots" style="display:flex;gap:4px;"></div><div class="nc" id="ctr">1 / 5</div><button class="na" onclick="next()">→</button></div>
+
+<div class="slide cover" id="s1"><div class="cgrid"></div>
+<div class="csts"><div class="cst"><div class="csn">${r.overallScore}</div><div class="csl">Impact Score /100</div></div><div class="cst"><div class="csn">${r.total}</div><div class="csl">New Homes</div></div><div class="cst"><div class="csn">${(r.constJobs+r.jobsFTE).toLocaleString()}</div><div class="csl">Total Jobs</div></div><div class="cst"><div class="csn" style="color:${r.bngPct>=10?'var(--a2)':'var(--yel)'}">${r.bngPct}%</div><div class="csl">Biodiv Net Gain</div></div></div>
+<div class="ctag">MetaConnex™ · Social & Sustainability Impact Report</div>
+<h1 class="ch1">${title}<br><em>Social Impact Analysis</em></h1>
+<div class="csub">BTR Residential · ${r.stor} storeys · ${r.total} units · ${r.gia.toLocaleString()}m² GIA · ${r.resNIA.toLocaleString()}m² residential NIA<br>Environment Act 2021 · NPPF · CRREM v2 · PCAF · ONS · Defra BM v4.0 · UKGBC BECD</div>
+<div class="cbdgs"><div class="cb">Env Act 2021</div><div class="cb">NPPF 2024</div><div class="cb">CRREM v2</div><div class="cb">PCAF</div><div class="cb">ONS</div><div class="cb">Defra BM v4.0</div><div class="cb">UKGBC BECD</div><div class="cb">VOA 2024</div></div></div>
+
+<div class="slide fp" id="s2">
+<div class="stag t1">Tier 1 · Immediate Placemaking Impact</div><div class="rule"></div>
+<h2 class="sh2">Homes, Biodiversity<br><em>& Green Infrastructure.</em></h2>
+<p class="slead">Direct outcomes of the B1 scheme: ${r.total} BTR units (${r.u1}×1B2P + ${r.u2}×2B4P), ${r.affordable} affordable, ${r.greenSp.toLocaleString()}m² green space, ${r.bngPct}% BNG.</p>
+<div class="mg4">
+${[['t1','New Homes',r.total,'dwellings','From massing. 1 per 85m² avg.','MHCLG',`<div class="st-pass">✓ DELIVERED</div>`],['t1','Affordable Homes',r.affordable,'(20% NPPF §63)','20% of total. NPPF Policy 63.','NPPF §63',`<div class="st-${r.affordable>0?'pass':'warn'}">${r.affordable>0?'✓ 20% MET':'! REVIEW'}</div>`],['t1','Green Space',r.greenSp.toLocaleString(),'m²','From design allocation.','NPPF/UGF',`<div class="st-info">FROM DESIGN</div>`],['t1','Green/Person',r.greenPP,'m²/p (9m² std)','Residents: '+r.residents+' (1/25m² NIA).','NPPF/NHS',`<div class="st-${r.greenPP>=9?'pass':r.greenPP>=5?'warn':'fail'}">${r.greenPP>=9?'✓ MEETS':'! BELOW'} STD</div>`],['t1','BNG',r.bngPct+'%','mandatory ≥10%','Defra BM v4.0. '+vs('habPre')+' → '+vs('habPost'),'Defra BM v4.0',`<div class="st-${r.bngPct>=10?'pass':'warn'}">${r.bngPct>=10?'✓ 10% MET':'! BELOW'}</div>`],['t1','EV Points',vn('evPts'),'OZEV 2024','Active EV charging.','OZEV/PAS 1899',`<div class="st-${vn('evPts')>0?'pass':'warn'}">${vn('evPts')>0?'✓ PROVIDED':'! NONE'}</div>`],['t1','Battery',vn('battery'),'mWh on-site','Grid balancing storage.','DNO/Design',`<div class="st-${vn('battery')>0?'pass':'warn'}">${vn('battery')>0?'PROVIDED':'NONE'}</div>`],['t1','Renewables',r.renMwh.toFixed(0),'MWh/yr','PV + ASHP generation.','FHS 2025',`<div class="st-${r.renMwh>0?'pass':'warn'}">${r.renMwh>0?'✓ FHS 2025':'! REVIEW'}</div>`]].map(([tier,lbl,val,unit,desc,api,badge])=>`<div class="mc ${tier}"><div class="mcl">${lbl}</div><div class="mcv ${tier}">${val}</div><div class="mcu">${unit}</div>${badge}<div class="mcd">${desc}</div><div class="mcapi">${api}</div></div>`).join('')}
+</div></div>
+
+<div class="slide fps" id="s3">
+<div class="stag t2">Tier 2 · Construction & Delivery</div><div class="rule" style="background:var(--t2)"></div>
+<h2 class="sh2">Employment, Carbon<br><em>& Resilience.</em></h2>
+<p class="slead">£${r.constCostM.toFixed(1)}m construction programme generating ${r.constJobs.toLocaleString()} jobs (ONS ×3 multiplier), ${r.apprent} apprentices, £${r.localSpend}m local spend.</p>
+<div class="mg4">
+${[['t2','Const. Jobs',r.constJobs.toLocaleString(),'FTE peak','ONS ×3/£m. £'+r.constCostM.toFixed(1)+'m × 3.','ONS IO Tables',`<div class="st-pass">✓ ONS CALC</div>`],['t2','Apprentices',r.apprent,'places','CITB 2% target.','CITB Levy',`<div class="st-pass">✓ CITB STD</div>`],['t2','Local Spend','£'+r.localSpend+'m','(30% BEIS)','Within 10mi.','BEIS',`<div class="st-pass">✓ 30% STD</div>`],['t2','Embodied C',r.embodied,'kgCO₂e/m²','UKGBC BECD benchmark.','UKGBC BECD',`<div class="st-${r.embodied<500?'pass':r.embodied<700?'warn':'fail'}">${r.embodied<500?'LOW C':r.embodied<700?'TYPICAL':'HIGH'}</div>`],['t2','Trees Planted',r.trees.toLocaleString(),'(BS 8545)','1/25m² green space.','BS 8545',`<div class="st-pass">✓ CALCULATED</div>`],['t2','Flood Invest','£'+vn('floodInv')+'m','SuDS/FWMA','Schedule 3 FWMA 2010.','EA Flood',`<div class="st-${vn('floodInv')>0?'pass':'warn'}">${vn('floodInv')>0?'PROVIDED':'NONE'}</div>`],['t2','Training',r.trainHrs.toLocaleString(),'hrs','5hrs/worker CITB.','CITB ITF',`<div class="st-pass">✓ 5HRS STD</div>`],['t2','Refurb',Math.round(r.total*.05),'units','5% PPG brownfield.','MHCLG PPG',`<div class="st-pass">✓ PPG</div>`]].map(([tier,lbl,val,unit,desc,api,badge])=>`<div class="mc ${tier}"><div class="mcl">${lbl}</div><div class="mcv ${tier}">${val}</div><div class="mcu">${unit}</div>${badge}<div class="mcd">${desc}</div><div class="mcapi">${api}</div></div>`).join('')}
+</div></div>
+
+<div class="slide fp" id="s4">
+<div class="stag gold">Tier 3 · Legacy · Value · Carbon Finance</div><div class="rule" style="background:var(--gold)"></div>
+<h2 class="sh2">Economic Impact<br><em>& Carbon Alignment.</em></h2>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:8px;">
+<div>
+<div class="stag t3" style="margin-bottom:12px">ECONOMIC LEGACY</div>
+<div class="mg4" style="grid-template-columns:1fr 1fr;margin-top:0">
+${[['t3','Perm. FTE',r.jobsFTE,'commercial FTE','1/20m² (HCA EDA).','Homes England'],['t3','Biz Rates','£'+r.bizRates+'m','p.a.','VOA 51.2p × RV.','VOA 2024/25'],['t3','FM Supply','£'+r.fmSupply+'m','p.a.','£30/m² RICS.','RICS FM'],['t3','CRREM',r.crremActual,'kgCO₂/m²/yr','1.5°C pathway.','CRREM v2']].map(([t,l,v,u,d,a])=>`<div class="mc ${t}"><div class="mcl">${l}</div><div class="mcv ${t}">${v}</div><div class="mcu">${u}</div><div class="mcd">${d}</div><div class="mcapi">${a}</div></div>`).join('')}
+</div>
+<div style="margin-top:12px;background:var(--s2);border:1px solid var(--b);padding:14px;">
+<div style="font-size:9px;font-family:'Space Mono',monospace;color:var(--a2);letter-spacing:1px;margin-bottom:8px;">CARBON PERFORMANCE</div>
+${[['CRREM 2030 Target','12.8 kgCO₂/m²/yr'],['Achieved',r.crremActual+' kgCO₂/m²/yr'],['Status',r.crremActual<=12.8?'✓ On 1.5°C pathway':'⚠ Stranding risk'],['PCAF Score',r.pcafScore+' / 5 (Score 2 = design EUI)'],['UKNZBS Rating',r.nzbs]].map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(26,42,64,.4);font-size:11px;"><span style="color:var(--mut)">${l}</span><span style="font-family:'Space Mono',monospace">${v}</span></div>`).join('')}
+</div>
+</div>
+<div>
+<div class="stag gold" style="margin-bottom:12px">BTR DEVELOPMENT APPRAISAL</div>
+<div class="vdash">
+<div class="vdt">B1 Crompton — S2 Option F</div>
+${[['Gross Rent p.a.','£'+(r.grossRent/1000).toFixed(0)+'k','n'],['NOI ('+Math.round(r.opexPct*100)+'% OPEX)','£'+(r.noi/1000).toFixed(0)+'k','n'],['GDV ('+vn('capRate')+'% cap rate)','£'+(r.gcv/1e6).toFixed(2)+'m','n'],['NDV (net of costs)','£'+(r.ndv/1e6).toFixed(2)+'m','n'],['Total Build Cost','£'+(r.totalBuild/1e6).toFixed(2)+'m','n'],['Fees + DM + Ctg','£'+(((r.fees||0)+(r.dm||0)+(r.ctg||0))/1e6).toFixed(2)+'m','n'],['S106','£'+(r.s106/1000).toFixed(0)+'k','n'],['Total Project Cost','£'+r.totalCost.toFixed(2)+'m','n'],['Residual',fmt(r.residual),r.residual>=0?'pos':'neg'],['Profit on Cost',r.poc.toFixed(1)+'%',r.poc>=15?'pos':r.poc>=0?'neutral':'neg']].map(([l,v,c])=>`<div class="vdr"><span style="color:var(--mut)">${l}</span><span style="font-family:'Space Mono',monospace;color:${c==='pos'?'var(--a2)':c==='neg'?'var(--red)':'var(--txt)'}">${v}</span></div>`).join('')}
+</div>
+<div class="note" style="margin-top:10px;border-color:rgba(255,107,53,.3)">Current scheme shows structural deficit (−${Math.abs(r.poc).toFixed(1)}% on cost). NTG ${(r.ntgVal*100).toFixed(0)}% efficiency insufficient to bridge GIA cost and NIA value. Options: increase rents, reduce build cost, optimise unit mix, or seek grant funding.</div>
+</div></div></div>
+
+<div class="slide fps" id="s5">
+<div class="stag">Overall Impact Report · ${ref}</div><div class="rule"></div>
+<h2 class="sh2">B1 Crompton Place<br><em>Full Compliance Summary.</em></h2>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:36px;margin-top:20px;">
+<div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;">
+${[['Impact Score',r.overallScore+'/100','var(--gold)'],['T1 Placemaking',r.t1Score+'/100','var(--t1)'],['T2 Construction',r.t2Score+'/100','var(--t2)'],['T3 Legacy',r.t3Score+'/100','var(--t3)'],['EPC Rating',r.epc,'var(--a2)'],['PCAF Score',r.pcafScore+'/5','var(--teal)']].map(([l,v,c])=>`<div style="background:var(--s2);border:1px solid var(--b);padding:10px;text-align:center;"><div style="font-size:8px;font-family:'Space Mono',monospace;color:var(--mut);margin-bottom:4px">${l}</div><div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;color:${c}">${v}</div></div>`).join('')}
+</div>
+${[['New Homes Delivered',r.total,'units','t1'],['Affordable Homes',r.affordable,'(20%)','t1'],['Biodiversity Net Gain',r.bngPct+'%','Env Act 2021','t1'],['Green Space / Person',r.greenPP,'m²/person','t1'],['Construction Jobs',r.constJobs.toLocaleString(),'FTE ONS ×3','t2'],['Local Spend','£'+r.localSpend+'m','30% BEIS','t2'],['Embodied Carbon',r.embodied,'kgCO₂e/m²','t2'],['Training Hours',r.trainHrs.toLocaleString(),'hours CITB','t2'],['CRREM Intensity',r.crremActual,'kgCO₂/m²/yr','t3'],['Permanent FTE',r.jobsFTE,'commercial','t3'],['Business Rates','£'+r.bizRates+'m','p.a. VOA','t3'],['UKNZBS Rating',r.nzbs,'certification','t3']].map(([l,v,u,t])=>`<div class="brrow"><div class="brlbl">${l}</div><div class="brtrk"><div class="brfil" style="width:${Math.min(100,parseFloat(v)/(t==='t1'?r.total||60:t==='t2'?Math.max(r.constJobs,1):20)*100)}%;background:var(--${t})"></div></div><div class="brval">${v} <span style="font-size:8px;color:var(--mut)">${u}</span></div></div>`).join('')}
+</div>
+<div>
+<table class="ctbl">
+<thead><tr><th>Metric</th><th>Standard</th><th>Achieved</th><th>Req.</th><th>Status</th></tr></thead>
+<tbody>
+${[['BNG','Env Act 2021',r.bngPct+'%','≥10%',r.bngPct>=10,r.bngPct>=0],['Green/Person','NPPF/NHS',r.greenPP+'m²','≥9m²',r.greenPP>=9,r.greenPP>=5],['CRREM 2030','CRREM v2',r.crremActual+' kgCO₂','≤12.8',r.crremActual<=12.8,r.crremActual<=20],['PCAF Score','PCAF Std',r.pcafScore+'/5','≤2',r.pcafScore<=2,r.pcafScore<=3],['Embodied C','UKGBC BECD',r.embodied+' kgCO₂','<500',r.embodied<500,r.embodied<700],['Affordable','NPPF §63',r.affordable+' units','≥20%',r.affordable>=Math.round(r.total*.2),r.affordable>0],['EUI','CIBSE TM54',r.EUI.toFixed(0)+' kWh/m²','≤100',r.EUI<=100,r.EUI<=150],['UKNZBS','UKNZBS 2024',r.nzbs,'≥Bronze',r.nzbs!=='In Progress',true]].map(([m,s,a,req,pass,warn])=>`<tr><td style="font-size:11px;font-weight:500">${m}</td><td style="font-family:'Space Mono',monospace;font-size:8px;color:var(--mut)">${s}</td><td style="font-family:'Space Mono',monospace;font-size:10px">${a}</td><td style="font-family:'Space Mono',monospace;font-size:9px;color:var(--mut)">${req}</td><td><div class="st-${pass?'pass':warn?'warn':'fail'}">${pass?'✓ PASS':warn?'! REVIEW':'✕ FAIL'}</div></td></tr>`).join('')}
+</tbody></table>
+<div style="margin-top:20px;text-align:center">
+<div style="font-family:'Space Mono',monospace;font-size:8px;color:var(--mut);letter-spacing:1px;margin-bottom:12px">${ref} · ${date} · MetaConnex™ · B1 Crompton Place · S2 Option F</div>
+<button class="prnbtn" onclick="window.print()">⬇ PRINT / SAVE PDF</button>
+</div></div></div></div>
+
+<script>
+const T=5;let c=1;
+const de=document.getElementById('dots');
+for(let i=1;i<=T;i++){const d=document.createElement('div');d.className='nd'+(i===1?' on':'');d.onclick=()=>go(i);de.appendChild(d);}
+function go(n){c=n;document.getElementById('s'+n)?.scrollIntoView({behavior:'smooth',block:'start'});document.querySelectorAll('.nd').forEach((d,i)=>d.classList.toggle('on',i===n-1));document.getElementById('ctr').textContent=n+' / '+T;setTimeout(()=>document.getElementById('s'+n)?.querySelectorAll('.ai').forEach(e=>e.classList.add('v')),120);}
+function next(){if(c<T)go(c+1);}function prev(){if(c>1)go(c-1);}
+window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowDown')next();if(e.key==='ArrowLeft'||e.key==='ArrowUp')prev();});
+window.addEventListener('scroll',()=>{for(let i=1;i<=T;i++){const s=document.getElementById('s'+i);if(!s)continue;const r=s.getBoundingClientRect();if(r.top<=window.innerHeight/2&&r.bottom>=window.innerHeight/2){if(c!==i){c=i;document.querySelectorAll('.nd').forEach((d,j)=>d.classList.toggle('on',j===i-1));document.getElementById('ctr').textContent=i+' / '+T;}s.querySelectorAll('.ai').forEach(e=>e.classList.add('v'));}}},{passive:true});
+setTimeout(()=>document.getElementById('s1')?.querySelectorAll('.ai').forEach(e=>e.classList.add('v')),200);
+<\/script></body></html>`;}
+
+// ── INIT ────────────────────────────────────────
+window.addEventListener('load',()=>{
+  // Initialise WWR slider visual state
+  const initWWR = parseInt(document.getElementById('glazPct').value) || 30;
+  onWWRChange(initWWR);
+
+  _doLiveUpdate();
+  buildBuilding();
+  setTimeout(()=>runSim(),800);
+});
+</script>
+</body>
+</html>
